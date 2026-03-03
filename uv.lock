@@ -450,6 +450,25 @@ wheels = [
 ]
 
 [[package]]
+name = "phidget22"
+version = "1.24.20260127"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/dc/25050232239d7ef72574f4e1577d3d4001d58c42d961ec5d506da465ba46/phidget22-1.24.20260127.tar.gz", hash = "sha256:34dea84daab41e370e9daac23193bcb5958a02a4c4f5727b7c4453792e9395fa", size = 53395, upload-time = "2026-01-27T19:09:52.215Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/2b/cbfccb1c45443c9754aad6fbdf154f088907391e8d1b3d653da9cb388a4c/phidget22-1.24.20260127-py3-none-any.whl", hash = "sha256:aac36d85ba3d32b5805f6b3e32cb39cb38395c34c8f44c61d403c3f0ba56a543", size = 96608, upload-time = "2026-01-27T19:09:34.906Z" },
+    { url = "https://files.pythonhosted.org/packages/49/1f/a471e63269755a36da04e28ce7e3db9f3cb720b996179e823fcf20a0d9d4/phidget22-1.24.20260127-py3-none-macosx_10_11_universal2.whl", hash = "sha256:7e7e351bf95cee9f42e7c51472f006a0c37d41b13968ef18807dc4348f379845", size = 1284603, upload-time = "2026-01-27T19:09:36.809Z" },
+    { url = "https://files.pythonhosted.org/packages/62/10/433f9596c2576a4d539e79d1be33454cf201aeeac228fbe780edf73babd5/phidget22-1.24.20260127-py3-none-macosx_10_11_x86_64.whl", hash = "sha256:d22c3a9805f7ad351185757d196cf3eeefc9f5ec6e86d33ffc926fc61a5ce721", size = 705637, upload-time = "2026-01-27T19:09:38.457Z" },
+    { url = "https://files.pythonhosted.org/packages/87/62/4cbf6ae977bf486acbeca6f44ca4cf7228c29545413ceb4a60a0c301b55b/phidget22-1.24.20260127-py3-none-macosx_11_0_arm64.whl", hash = "sha256:46997a743e65318767291bc9e447a0092c63a11fb3612255e4dee703ebe3fec6", size = 665107, upload-time = "2026-01-27T19:09:40.293Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/18/2ffcda7a0a3b24f859d822eb2d2e7011ad70fa40df7c67aa16f700b7f3d9/phidget22-1.24.20260127-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:9d1dbfdc7c5e0a6949979d7dcee282aa36f81c2a8cb863579fb1052beaf823a6", size = 770703, upload-time = "2026-01-27T19:09:41.941Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/ff/6ffef76e27a8532a8f9193d1327a334f974c7b56648eb814985532603b49/phidget22-1.24.20260127-py3-none-manylinux_2_28_armv7l.whl", hash = "sha256:ec55397973b9ae45c377c04b2b25f79925f0ead2fecc38afcdcefe1de282c7a4", size = 699736, upload-time = "2026-01-27T19:09:43.53Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/16/afbc2a19f9b947026b6f7ce39004b5d3aadc07a6411e58fc695f064639a8/phidget22-1.24.20260127-py3-none-manylinux_2_28_i686.whl", hash = "sha256:576d2df880c9325ba52e63ca49d4b1996a89863c183deb09d429cfe9c46bf2a1", size = 836338, upload-time = "2026-01-27T19:09:45.275Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/0c/1f28c25d37e4706a3f8ce05134113df1ace5cc524e3fd02f8ee3b232b19c/phidget22-1.24.20260127-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:df6b5ec48c492bf3b180e5a685c6af4d17ea34811f020cee85a16b021fd03842", size = 791446, upload-time = "2026-01-27T19:09:46.85Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/65/9d1c8a56d70fd23971b9927cc9b2ac0a1f69486d4818504f98421b856a5b/phidget22-1.24.20260127-py3-none-win32.whl", hash = "sha256:77edbf70eea87a8864cfd74865780013da670d484021512cf061167f9e3be739", size = 903701, upload-time = "2026-01-27T19:09:48.46Z" },
+    { url = "https://files.pythonhosted.org/packages/81/2e/e0e484f16464973bbc36c6f933cc15d2cfb257d427c632dd29b2b1fc7006/phidget22-1.24.20260127-py3-none-win_amd64.whl", hash = "sha256:5f57b05fa7dff3e1c6d491c9d5e3e9df28477424cf01ba86c73256c35c67b1d1", size = 996750, upload-time = "2026-01-27T19:09:49.774Z" },
+    { url = "https://files.pythonhosted.org/packages/05/93/628315458c4b1bf4bc086467d3f9c82c58663ed46cbb6798ef238f7cf249/phidget22-1.24.20260127-py3-none-win_arm64.whl", hash = "sha256:fb0f22f46fd1ddb5fb5a0e2e3fb3122e708ed6e0b1a71eb088050613c76f1a8c", size = 1012125, upload-time = "2026-01-27T19:09:51.091Z" },
+]
+
+[[package]]
 name = "pillow"
 version = "12.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -654,6 +673,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
+    { name = "phidget22" },
     { name = "plotly" },
     { name = "scipy" },
     { name = "streamlit" },
@@ -662,6 +682,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=2.4.2" },
+    { name = "phidget22", specifier = ">=1.24.20260127" },
     { name = "plotly", specifier = ">=6.5.2" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "streamlit", specifier = ">=1.54.0" },
