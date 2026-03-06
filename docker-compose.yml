@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: seismic-broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: seismic-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      # Automatically install the MQTT streaming plugin
+      - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
+      # Bypass the login screen for local development
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      # Keep your dashboards safe even if the container restarts
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - mosquitto
+    restart: unless-stopped
+
+volumes:
+  grafana_data:
