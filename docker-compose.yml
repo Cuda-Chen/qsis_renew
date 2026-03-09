@@ -8,6 +8,7 @@ services:
       - "1883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    #restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -21,11 +22,17 @@ services:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     volumes:
-      # Keep your dashboards safe even if the container restarts
+      # Keep your internal Grafana data safe even if the container restarts
       - grafana_data:/var/lib/grafana
+      # Map the MQTT Data Source provisioning file
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      # Map the Dashboard provisioning instructions
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      # Map the actual JSON dashboard file containing both panels
+      - ./grafana/dashboards:/etc/grafana/dashboards
     depends_on:
       - mosquitto
+    #restart: unless-stopped
 
 volumes:
   grafana_data:
