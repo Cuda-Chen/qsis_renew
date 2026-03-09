@@ -15,6 +15,8 @@
       },
       "fieldConfig": {
         "defaults": {
+          "min": -3,
+          "max": 3,
           "color": {
             "mode": "palette-classic"
           },
@@ -60,7 +62,26 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "x_axis" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+              ]
+            },
+            {
+              "matcher": { "id": "byName", "options": "y_axis" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }
+              ]
+            },
+            {
+              "matcher": { "id": "byName", "options": "z_axis" },
+              "properties": [
+                { "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }
+              ]
+            }
+         ]
       },
       "gridPos": {
         "h": 15,
@@ -91,24 +112,30 @@
           "topic": "telemetry/seismic"
         }
       ],
-      "title": "Real-Time Seismic Wave Amplitude (3-Axis)",
+      "title": "Raw Seismic Stream",
       "transformations": [
-        {
+          {
           "id": "extractFields",
           "options": {
-            "source": "Message"
+            "format": "json",
+            "replace": true,
+            "source": "A"
           }
         },
         {
-          "id": "filterFieldsByName",
+          "id": "organize",
           "options": {
-            "include": {
-              "names": [
-                "Time",
-                "x_axis",
-                "y_axis",
-                "z_axis"
-              ]
+            "excludeByName": {
+              "status": true
+            },
+            "indexByName": {
+              "timestamp": 0,
+              "x_axis": 1,
+              "y_axis": 2,
+              "z_axis": 3
+            },
+            "renameByName": {
+              "timestamp": "Time"
             }
           }
         }
@@ -129,7 +156,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Seismic Telemetry Stream",
-  "uid": "seismic_dash_02",
+  "title": "Seismic Telemetry - Raw",
+  "uid": "seismic_raw_01",
   "version": 1
 }

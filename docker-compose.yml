@@ -8,7 +8,6 @@ services:
       - "1883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
-    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -24,9 +23,9 @@ services:
     volumes:
       # Keep your dashboards safe even if the container restarts
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - mosquitto
-    restart: unless-stopped
 
 volumes:
   grafana_data:
