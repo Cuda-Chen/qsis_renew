@@ -20,7 +20,12 @@ This layout cleanly separates the heavy Python data processing from the high-spe
 - **FFT & Magnitudes**: If you are calculating the magnitude of multiple axes (e.g. $\sqrt{x^2+y^2+z^2}$) before an FFT mathematically, this inherently introduces a massive mathematical DC offset (0Hz) because it squares the signals. You **must** scrub this synthesized magnitude through a zero-phase `scipy.signal.sosfiltfilt` bandpass *before* applying the FFT Hanning window, otherwise your low-frequency spectrum will be blown out.
 - **FFT Frequency Limits**: Always calculate your theoretical Nyquist Limit, which is exactly half of your sampling rate (e.g. 100Hz Sampling Rate = 50.0Hz Limit). explicitly open your Butterworth Bandpass filters (e.g. `[0.5, 49.9]`) and your downstream API mask (`valid_idx`) to stream up to this limit to maximize your Spectrogram viewable spectrum.
 
-## 3. Frontend: Vanilla JS + HTML5 Canvas
+## 3. Data Export & Scientific Formats
+- **Standardizing Network Data**: If exporting accelerometer or seismograph data, use `obspy.Stream` and `obspy.Trace`.
+- **Dependency Issues**: Note that `obspy` has historic dependencies on `pkg_resources`. Ensure you lock `setuptools==69.5.1` (or earlier) in `uv` environments to avoid `ModuleNotFoundError` during `obspy` import.
+- **Serving Binary Downloads**: To download data from memory instead of the disk, instruct FastAPI to return a natively chunked `StreamingResponse` wrapping an `io.BytesIO()` binary blob with headers like `{"Content-Disposition": "attachment; filename=..."}`.
+
+## 4. Frontend: Vanilla JS + HTML5 Canvas
 - Use the standard Javascript `canvas.getContext('2d')`.
 - Connect to the backend using native `new WebSocket()`.
 - **Waveform Rendering**: Use `requestAnimationFrame(drawLoop)` to draw the graph. Never use `setInterval`. Append raw Float arrays directly to the canvas memory buffer.
