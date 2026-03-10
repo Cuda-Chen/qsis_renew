@@ -12,7 +12,7 @@ let wsWaveform, wsSpectro;
 
 // Configuration
 const FS = 100; // 100Hz
-const SECONDS_TO_SHOW = 5;
+const SECONDS_TO_SHOW = 60;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
 
 // --- Waveform State ---
@@ -22,8 +22,8 @@ let waveZ = new Float32Array(FS * SECONDS_TO_SHOW);
 let currentScale = 3.0;
 
 // --- Spectrogram State ---
-// Let's store 5 rows, giving us 5 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
-const SPEC_ROWS = 5; 
+// Let's store 60 rows, giving us 60 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
+const SPEC_ROWS = 60; 
 let specHistory = []; // array of Float32Arrays
 let maxFreqBins = 0; // Will be set when first payload arrives
 
@@ -193,5 +193,41 @@ requestAnimationFrame(drawWaveform);
 
 // Export Data
 document.getElementById('downloadMseedBtn').addEventListener('click', () => {
+    // We simply redirect the browser to the GET endpoint. It will trigger a native save-as dialog.
     window.location.href = '/api/download_mseed';
 });
+
+// --- Dynamic Datetime Clock ---
+function updateAxisClocks() {
+    const now = new Date();
+    // Offset by 60 seconds for the left axis
+    const past = new Date(now.getTime() - 60000);
+
+    const pad = (n) => n.toString().padStart(2, '0');
+    
+    // Format: HH:MM:SS
+    const timeRightStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeLeftStr = `${pad(past.getHours())}:${pad(past.getMinutes())}:${pad(past.getSeconds())}`;
+
+    // Update all right-side labels (NOW)
+    const rightLabels = document.querySelectorAll('.time-right');
+    rightLabels.forEach(el => {
+        // For the spectrogram, it technically is 2 seconds delayed mathematically due to FFT chunking,
+        // but we can append the label gracefully.
+        if (el.parentElement.className === 'spectro-container') {
+            el.innerHTML = `${timeRightStr} (-2s)`;
+        } else {
+            el.innerHTML = timeRightStr;
+        }
+    });
+
+    // Update all left-side labels (T-60s)
+    const leftLabels = document.querySelectorAll('.time-left');
+    leftLabels.forEach(el => {
+        el.innerHTML = timeLeftStr;
+    });
+}
+
+// Start Clock and tick every 1000ms
+setInterval(updateAxisClocks, 1000);
+updateAxisClocks(); // Initial call
