@@ -18,6 +18,7 @@ This layout cleanly separates the heavy Python data processing from the high-spe
 - **Buffering**: Use custom `RingBuffer` (pre-allocated 1D or 2D Numpy Array `np.zeros((SIZE, CHANNELS))`) with a circular head pointer, rather than `collections.deque()`. `deque` requires slow `list()` conversions before math can be done. Pre-allocated arrays prevent memory reallocation pauses.
 - **Live Filtering**: Use `scipy.signal.sosfilt` and an Exponential Moving Average for de-meaning real-time streams, as it is strictly superior and more stable than `lfilter`.
 - **FFT & Magnitudes**: If you are calculating the magnitude of multiple axes (e.g. $\sqrt{x^2+y^2+z^2}$) before an FFT mathematically, this inherently introduces a massive mathematical DC offset (0Hz) because it squares the signals. You **must** scrub this synthesized magnitude through a zero-phase `scipy.signal.sosfiltfilt` bandpass *before* applying the FFT Hanning window, otherwise your low-frequency spectrum will be blown out.
+- **FFT Frequency Limits**: Always calculate your theoretical Nyquist Limit, which is exactly half of your sampling rate (e.g. 100Hz Sampling Rate = 50.0Hz Limit). explicitly open your Butterworth Bandpass filters (e.g. `[0.5, 49.9]`) and your downstream API mask (`valid_idx`) to stream up to this limit to maximize your Spectrogram viewable spectrum.
 
 ## 3. Frontend: Vanilla JS + HTML5 Canvas
 - Use the standard Javascript `canvas.getContext('2d')`.

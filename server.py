@@ -57,7 +57,7 @@ latest_spectrogram = None
 # --- DSP ---
 class DSPProcessor:
     def __init__(self):
-        self.sos = butter(4, [0.5, 20.0], btype='bandpass', fs=FS, output='sos')
+        self.sos = butter(4, [0.5, 49.9], btype='bandpass', fs=FS, output='sos')
         self.zi_x = sosfilt_zi(self.sos)
         self.zi_y = sosfilt_zi(self.sos)
         self.zi_z = sosfilt_zi(self.sos)
@@ -125,7 +125,7 @@ def math_loop():
     
     # Create a Butterworth bandpass filter for the spectrogram magnitude 
     # (magnitude operation introduces a DC offset and harmonics)
-    sos_spec = butter(4, [0.5, 20.0], btype='bandpass', fs=FS, output='sos')
+    sos_spec = butter(4, [0.5, 49.9], btype='bandpass', fs=FS, output='sos')
     
     while True:
         time.sleep(SPECTRO_PUBLISH_RATE)
@@ -144,8 +144,8 @@ def math_loop():
             fft_vals = np.abs(np.fft.rfft(windowed)) / window_samples
             freqs = np.fft.rfftfreq(window_samples, 1/FS)
             
-            # Filter freqs between 0.5 and 20.0 Hz
-            valid_idx = (freqs >= 0.5) & (freqs <= 20.0)
+            # Filter freqs between 0.5 and 50.0 Hz
+            valid_idx = (freqs >= 0.5) & (freqs <= 50.0)
             f_bins = freqs[valid_idx]
             mags = fft_vals[valid_idx]
             
