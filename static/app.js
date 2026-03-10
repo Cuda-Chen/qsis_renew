@@ -1,6 +1,11 @@
-const waveformCanvas = document.getElementById('waveformCanvas');
+const canvasZ = document.getElementById('canvasZ');
+const canvasN = document.getElementById('canvasN');
+const canvasE = document.getElementById('canvasE');
 const spectroCanvas = document.getElementById('spectroCanvas');
-const ctxWave = waveformCanvas.getContext('2d', { alpha: false });
+
+const ctxZ = canvasZ.getContext('2d', { alpha: false });
+const ctxN = canvasN.getContext('2d', { alpha: false });
+const ctxE = canvasE.getContext('2d', { alpha: false });
 const ctxSpec = spectroCanvas.getContext('2d', { alpha: false });
 
 let wsWaveform, wsSpectro;
@@ -23,9 +28,12 @@ let specHistory = []; // array of Float32Arrays
 let maxFreqBins = 0; // Will be set when first payload arrives
 
 function resize() {
-    // Waveform
-    waveformCanvas.width = waveformCanvas.parentElement.clientWidth;
-    waveformCanvas.height = waveformCanvas.parentElement.clientHeight;
+    canvasZ.width = canvasZ.parentElement.clientWidth;
+    canvasZ.height = canvasZ.parentElement.clientHeight;
+    canvasN.width = canvasN.parentElement.clientWidth;
+    canvasN.height = canvasN.parentElement.clientHeight;
+    canvasE.width = canvasE.parentElement.clientWidth;
+    canvasE.height = canvasE.parentElement.clientHeight;
     // Spectrogram
     spectroCanvas.width = spectroCanvas.parentElement.clientWidth;
     spectroCanvas.height = spectroCanvas.parentElement.clientHeight;
@@ -90,38 +98,43 @@ function updateStatus() {
 
 // --- Render Loop (Waveform) ---
 function drawWaveform() {
-    const width = waveformCanvas.width;
-    const height = waveformCanvas.height;
+    // Assuming all 3 have the same dimensions due to flex layout
+    const width = canvasZ.width;
+    const height = canvasZ.height;
     
-    // Clear Background
-    ctxWave.fillStyle = '#000000';
-    ctxWave.fillRect(0, 0, width, height);
+    // Clear Backgrounds
+    ctxZ.fillStyle = '#000000';
+    ctxZ.fillRect(0, 0, width, height);
+    ctxN.fillStyle = '#000000';
+    ctxN.fillRect(0, 0, width, height);
+    ctxE.fillStyle = '#000000';
+    ctxE.fillRect(0, 0, width, height);
 
     // Hardcode Scale to exactly 3.0G as requested
     currentScale = 3.0;
 
     // Helper to draw a single axis line
-    function drawAxis(buffer, color) {
-        ctxWave.strokeStyle = color;
-        ctxWave.lineWidth = 1.5;
-        ctxWave.lineJoin = 'round';
-        ctxWave.beginPath();
+    function drawAxis(ctx, buffer, color) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
         const len = buffer.length;
         for (let i = 0; i < len; i++) {
             const x = (i / (len - 1)) * width;
             const normalized = (buffer[i] / currentScale + 1) / 2;
             const y = height - (normalized * height);
             
-            if (i === 0) ctxWave.moveTo(x, y);
-            else ctxWave.lineTo(x, y);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
         }
-        ctxWave.stroke();
+        ctx.stroke();
     }
     
-    // Draw Z (Blue), Y (Green), X (Red). Draw Z last so it's on top if overlapping
-    drawAxis(waveX, '#ef4444');
-    drawAxis(waveY, '#10b981');
-    drawAxis(waveZ, '#3b82f6');
+    // Draw Z (Blue), N mapped to Y (Green), E mapped to X (Red)
+    drawAxis(ctxZ, waveZ, '#3b82f6'); // Z
+    drawAxis(ctxN, waveY, '#10b981'); // N (Y-axis of sensor)
+    drawAxis(ctxE, waveX, '#ef4444'); // E (X-axis of sensor)
     
     // Request next frame for that buttery 60fps Blit mode effect
     requestAnimationFrame(drawWaveform);

@@ -16,13 +16,39 @@
 
         body {
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: var(--bg-dark);
             color: var(--text-main);
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             display: flex;
+            flex-direction: row;
+            height: 100vh;
+            width: 100vw;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 80px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5em;
+            color: #94a3b8;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 16px;
+            padding: 16px;
             height: 100vh;
             box-sizing: border-box;
             overflow: hidden;
@@ -32,7 +58,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 16px;
+            padding-bottom: 8px;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -95,7 +121,6 @@
             flex: 1;
             position: relative;
             width: 100%;
-            min-height: 250px;
             overflow: hidden;
             background: #000;
             border-radius: 8px;
@@ -103,7 +128,7 @@
         }
 
         .spectro-container {
-            height: 250px;
+            flex: 1;
             position: relative;
             width: 100%;
             overflow: hidden;
@@ -144,47 +169,63 @@
     </style>
 </head>
 <body>
+    <div class="sidebar">功能</div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1>QSIS資料處理系統</h1>
+            <div class="status-badge" id="conn-status">
+                <div class="status-dot"></div>
+                Connecting...
+            </div>
+        </div>
 
-    <div class="header">
-        <h1>Seismic Target: Station Z</h1>
-        <div class="status-badge" id="conn-status">
-            <div class="status-dot"></div>
-            Connecting...
+        <!-- Waveform Panel Z -->
+        <div class="panel" style="flex: 1;">
+            <div class="panel-header">
+                <span>波形串流 Z</span>
+            </div>
+            <div class="waveform-container">
+                <canvas id="canvasZ"></canvas>
+                <div class="grid-overlay"></div>
+                <div class="axis-label" style="bottom: 5px; right: 10px;">Z (Blue)</div>
+            </div>
         </div>
-    </div>
 
-    <!-- Waveform Panel -->
-    <div class="panel" style="flex: 1;">
-        <div class="panel-header">
-            <span>High-Speed Waveform (2-Second Delay Sync)
-                <span style="color:#ef4444; margin-left:12px; font-weight:700;">X</span>
-                <span style="color:#10b981; margin-left:6px; font-weight:700;">Y</span>
-                <span style="color:#3b82f6; margin-left:6px; font-weight:700;">Z</span>
-            </span>
-            <span id="scale-indicator" style="font-family: monospace; color: var(--text-main);">±3.0G</span>
+        <!-- Waveform Panel N (Y mapping) -->
+        <div class="panel" style="flex: 1;">
+            <div class="panel-header">
+                <span>波形串流 N</span>
+            </div>
+            <div class="waveform-container">
+                <canvas id="canvasN"></canvas>
+                <div class="grid-overlay"></div>
+                <div class="axis-label" style="bottom: 5px; right: 10px;">N (Green)</div>
+            </div>
         </div>
-        <div class="waveform-container">
-            <canvas id="waveformCanvas"></canvas>
-            <div class="grid-overlay"></div>
-            <!-- Labels -->
-            <div class="axis-label" style="top: 10px; left: 10px;">+3.0G</div>
-            <div class="axis-label" style="bottom: 10px; left: 10px;">-3.0G</div>
-            <div class="axis-label" style="bottom: 10px; right: 10px;">NOW (-2s)</div>
-            <div class="axis-label" style="bottom: 10px; left: 60px;">T-5s</div>
-        </div>
-    </div>
 
-    <!-- Spectrogram Panel -->
-    <div class="panel">
-        <div class="panel-header">
-            <span>Vertical Spectrogram (0.5Hz - 50Hz)</span>
-            <span>2s Chunking</span>
+        <!-- Waveform Panel E (X mapping) -->
+        <div class="panel" style="flex: 1;">
+            <div class="panel-header">
+                <span>波形串流 E</span>
+            </div>
+            <div class="waveform-container">
+                <canvas id="canvasE"></canvas>
+                <div class="grid-overlay"></div>
+                <div class="axis-label" style="bottom: 5px; right: 10px;">E (Red)</div>
+            </div>
         </div>
-        <div class="spectro-container">
-            <canvas id="spectroCanvas"></canvas>
-            <!-- Overlay axis labels for Spectro -->
-            <div class="axis-label" style="bottom: 5px; left: 10px;">0.5 Hz</div>
-            <div class="axis-label" style="bottom: 5px; right: 10px;">50.0 Hz</div>
+
+        <!-- Spectrogram Panel -->
+        <div class="panel" style="flex: 1.5;">
+            <div class="panel-header">
+                <span>時頻圖/頻譜</span>
+            </div>
+            <div class="spectro-container">
+                <canvas id="spectroCanvas"></canvas>
+                <div class="axis-label" style="bottom: 5px; left: 10px;">0.5 Hz</div>
+                <div class="axis-label" style="bottom: 5px; right: 10px;">50.0 Hz</div>
+            </div>
         </div>
     </div>
 

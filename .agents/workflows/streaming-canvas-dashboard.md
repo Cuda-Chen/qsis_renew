@@ -23,7 +23,8 @@ This layout cleanly separates the heavy Python data processing from the high-spe
 ## 3. Frontend: Vanilla JS + HTML5 Canvas
 - Use the standard Javascript `canvas.getContext('2d')`.
 - Connect to the backend using native `new WebSocket()`.
-- **Waveform Rendering**: Use `requestAnimationFrame(drawLoop)` to draw the graph. Never use `setInterval`. Append raw Float arrays directly to the canvas memory buffer. If rendering Multi-Axis data (X,Y,Z), loop `beginPath` for each trace on the same canvas rather than layering transparent canvases.
+- **Waveform Rendering**: Use `requestAnimationFrame(drawLoop)` to draw the graph. Never use `setInterval`. Append raw Float arrays directly to the canvas memory buffer.
+- **Multi-Axis Layouts**: If rendering distinct Multi-Axis data (e.g. X, Y, Z from an accelerometer), avoid layering them on a single complex canvas layout. Use CSS Flexbox to stack multiple distinct `<canvas>` elements vertically, and let a single `requestAnimationFrame` loop clear and draw to all 2D contexts simultaneously. This guarantees perfect time-step alignment across the axes while maintaining clean UI separation.
 - **Alignment**: For syncing high-speed data (waveforms) with inherently slower chunked data (like a 2-second FFT Spectrogram), explicitly delay the high-speed data stream by the equivalent block size (e.g. `NOW - 2s`) in the RingBuffer extraction to guarantee visual alignment. 
 
 ## 4. Example Stack
