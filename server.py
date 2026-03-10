@@ -2,13 +2,17 @@ import asyncio
 import json
 import threading
 import time
+import io
+from datetime import datetime, timezone
 import numpy as np
 from collections import deque
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from scipy.signal import butter, sosfilt, sosfilt_zi, sosfiltfilt
 from Phidget22.Devices.Accelerometer import Accelerometer
+import obspy
+from obspy import Trace, Stream
 
 app = FastAPI()
 
@@ -46,8 +50,17 @@ class RingBuffer:
         else:
             return np.concatenate((self.buffer[idx:], self.buffer[:self.head]))
 
-# We store 10 seconds of raw continuous data for history/sliding
-WAVEFORM_BUFFER_SIZE = int(FS * 10)
+    def get_all(self):
+        # Return all currently contiguous valid data
+        if not self.full:
+            if self.head == 0:
+                return np.zeros((0, 3))
+            return self.buffer[:self.head]
+        else:
+            return np.concatenate((self.buffer[self.head:], self.buffer[:self.head]))
+
+# We store 60 seconds of raw continuous data for history/downloading
+WAVEFORM_BUFFER_SIZE = int(FS * 60)
 waveform_ring = RingBuffer(WAVEFORM_BUFFER_SIZE)
 data_lock = threading.Lock()
 
@@ -169,6 +182,45 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def read_root():
     with open("static/index.html", "r") as f:
         return HTMLResponse(content=f.read())
+
+@app.get("/api/download_mseed")
+def download_mseed():
+    with data_lock:
+        data = waveform_ring.get_all()
+        
+    if len(data) == 0:
+        return {"error": "No data available yet"}
+        
+    # Infer start time based on current time minus the buffer duration
+    end_time = obspy.UTCDateTime()
+    start_time = end_time - (len(data) / FS)
+    
+    # ObsPy traces expect contiguous 1D arrays
+    # In our buffer: col 0=X(E), col 1=Y(N), col 2=Z(Z)
+    data_e = np.ascontiguousarray(data[:, 0], dtype=np.float32)
+    data_n = np.ascontiguousarray(data[:, 1], dtype=np.float32)
+    data_z = np.ascontiguousarray(data[:, 2], dtype=np.float32)
+    
+    stats_base = {'network': 'QS', 'station': 'Z', 'location': '00', 'npts': len(data), 'sampling_rate': FS, 'starttime': start_time}
+    
+    trace_e = Trace(data=data_e, header={**stats_base, 'channel': 'BHE'})
+    trace_n = Trace(data=data_n, header={**stats_base, 'channel': 'BHN'})
+    trace_z = Trace(data=data_z, header={**stats_base, 'channel': 'BHZ'})
+    
+    stream = Stream([trace_z, trace_n, trace_e])
+    
+    buf = io.BytesIO()
+    stream.write(buf, format="MSEED")
+    buf.seek(0)
+    
+    # User Note: Temporary dynamic length/filename. To be refactored per user feedback later.
+    filename = f"QSIS_Z_{end_time.strftime('%Y%m%d_%H%M%S')}.mseed"
+    
+    return StreamingResponse(
+        buf, 
+        media_type="application/vnd.fdsn.mseed", 
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @app.websocket("/ws/waveform")
 async def ws_waveform(websocket: WebSocket):

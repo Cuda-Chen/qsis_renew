@@ -29,18 +29,42 @@
         }
 
         .sidebar {
-            width: 80px;
+            width: 100px;
             background-color: var(--panel-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            padding: 24px 12px;
+            gap: 20px;
+        }
+
+        .sidebar-title {
             writing-mode: vertical-rl;
             text-orientation: upright;
             font-size: 1.5rem;
             font-weight: 600;
             letter-spacing: 0.5em;
             color: #94a3b8;
+            margin-bottom: auto;
+        }
+        
+        .download-btn {
+            background-color: var(--accent-green);
+            color: var(--bg-dark);
+            border: none;
+            border-radius: 6px;
+            padding: 12px 0px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s;
+            text-align: center;
+        }
+        
+        .download-btn:hover {
+            opacity: 0.8;
         }
 
         .main-content {
@@ -169,7 +193,10 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">功能</div>
+    <div class="sidebar">
+        <div class="sidebar-title">功能</div>
+        <button id="downloadMseedBtn" class="download-btn">下載<br/>MiniSEED</button>
+    </div>
     
     <div class="main-content">
         <div class="header">

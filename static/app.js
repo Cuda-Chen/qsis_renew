@@ -187,3 +187,8 @@ function drawSpectrogram() {
 connectWaveform();
 connectSpectro();
 requestAnimationFrame(drawWaveform);
+
+// Export Data
+document.getElementById('downloadMseedBtn').addEventListener('click', () => {
+    window.location.href = '/api/download_mseed';
+});
