@@ -7,7 +7,7 @@ from collections import deque
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
-from scipy.signal import butter, sosfilt, sosfilt_zi
+from scipy.signal import butter, sosfilt, sosfilt_zi, sosfiltfilt
 from Phidget22.Devices.Accelerometer import Accelerometer
 
 app = FastAPI()
@@ -123,6 +123,10 @@ def math_loop():
     window_samples = int(FS * FFT_WINDOW_SEC)
     hanning_window = np.hanning(window_samples)
     
+    # Create a Butterworth bandpass filter for the spectrogram magnitude 
+    # (magnitude operation introduces a DC offset and harmonics)
+    sos_spec = butter(4, [0.5, 20.0], btype='bandpass', fs=FS, output='sos')
+    
     while True:
         time.sleep(SPECTRO_PUBLISH_RATE)
         with data_lock:
@@ -132,8 +136,11 @@ def math_loop():
             # Calculate magnitude vector: sqrt(x^2 + y^2 + z^2)
             mag_window = np.sqrt(np.sum(data_window**2, axis=1))
             
-            # Calculate FFT
-            windowed = mag_window * hanning_window
+            # Apply Butterworth filter to the magnitude envelope
+            mag_filtered = sosfiltfilt(sos_spec, mag_window)
+            
+            # Calculate FFT on the filtered magnitude
+            windowed = mag_filtered * hanning_window
             fft_vals = np.abs(np.fft.rfft(windowed)) / window_samples
             freqs = np.fft.rfftfreq(window_samples, 1/FS)
             
