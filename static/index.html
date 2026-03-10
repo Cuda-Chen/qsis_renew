@@ -156,15 +156,19 @@
     <!-- Waveform Panel -->
     <div class="panel" style="flex: 1;">
         <div class="panel-header">
-            <span>High-Speed Waveform (2-Second Delay Sync)</span>
-            <span id="scale-indicator" style="font-family: monospace; color: var(--accent-green);">±0.05G</span>
+            <span>High-Speed Waveform (2-Second Delay Sync)
+                <span style="color:#ef4444; margin-left:12px; font-weight:700;">X</span>
+                <span style="color:#10b981; margin-left:6px; font-weight:700;">Y</span>
+                <span style="color:#3b82f6; margin-left:6px; font-weight:700;">Z</span>
+            </span>
+            <span id="scale-indicator" style="font-family: monospace; color: var(--text-main);">±3.0G</span>
         </div>
         <div class="waveform-container">
             <canvas id="waveformCanvas"></canvas>
             <div class="grid-overlay"></div>
             <!-- Labels -->
-            <div class="axis-label" style="top: 10px; left: 10px;">+Max</div>
-            <div class="axis-label" style="bottom: 10px; left: 10px;">-Max</div>
+            <div class="axis-label" style="top: 10px; left: 10px;">+3.0G</div>
+            <div class="axis-label" style="bottom: 10px; left: 10px;">-3.0G</div>
             <div class="axis-label" style="bottom: 10px; right: 10px;">NOW (-2s)</div>
             <div class="axis-label" style="bottom: 10px; left: 60px;">T-5s</div>
         </div>

@@ -23,7 +23,7 @@ UI_STREAM_MS = 33 # 30fps websocket push
 class RingBuffer:
     def __init__(self, size):
         self.size = size
-        self.buffer = np.zeros(size)
+        self.buffer = np.zeros((size, 3))
         self.head = 0
         self.full = False
 
@@ -58,19 +58,34 @@ latest_spectrogram = None
 class DSPProcessor:
     def __init__(self):
         self.sos = butter(4, [0.5, 20.0], btype='bandpass', fs=FS, output='sos')
+        self.zi_x = sosfilt_zi(self.sos)
+        self.zi_y = sosfilt_zi(self.sos)
         self.zi_z = sosfilt_zi(self.sos)
         self.alpha = 0.05
+        self.mean_x = None
+        self.mean_y = None
         self.mean_z = None
 
-    def process(self, z):
-        if self.mean_z is None:
-            self.mean_z = z
+    def process(self, x, y, z):
+        if self.mean_x is None:
+            self.mean_x, self.mean_y, self.mean_z = x, y, z
+            self.zi_x *= 0
+            self.zi_y *= 0
             self.zi_z *= 0
 
+        self.mean_x = self.alpha * x + (1 - self.alpha) * self.mean_x
+        self.mean_y = self.alpha * y + (1 - self.alpha) * self.mean_y
         self.mean_z = self.alpha * z + (1 - self.alpha) * self.mean_z
+        
+        dm_x = x - self.mean_x
+        dm_y = y - self.mean_y
         dm_z = z - self.mean_z
+        
+        fx, self.zi_x = sosfilt(self.sos, [dm_x], zi=self.zi_x)
+        fy, self.zi_y = sosfilt(self.sos, [dm_y], zi=self.zi_y)
         fz, self.zi_z = sosfilt(self.sos, [dm_z], zi=self.zi_z)
-        return fz[0]
+        
+        return fx[0], fy[0], fz[0]
 
 dsp = DSPProcessor()
 
@@ -79,9 +94,9 @@ def hardware_loop():
     ch = Accelerometer()
     
     def on_accel(self, acc, ts):
-        fz = dsp.process(acc[2])
+        f = dsp.process(acc[0], acc[1], acc[2])
         with data_lock:
-            waveform_ring.append(fz)
+            waveform_ring.append(f)
 
     ch.setOnAccelerationChangeHandler(on_accel)
     
@@ -114,8 +129,11 @@ def math_loop():
             data_window = waveform_ring.get_window(window_samples)
             
         if data_window is not None:
+            # Calculate magnitude vector: sqrt(x^2 + y^2 + z^2)
+            mag_window = np.sqrt(np.sum(data_window**2, axis=1))
+            
             # Calculate FFT
-            windowed = data_window * hanning_window
+            windowed = mag_window * hanning_window
             fft_vals = np.abs(np.fft.rfft(windowed)) / window_samples
             freqs = np.fft.rfftfreq(window_samples, 1/FS)
             

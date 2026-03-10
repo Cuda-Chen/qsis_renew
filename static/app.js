@@ -11,8 +11,10 @@ const SECONDS_TO_SHOW = 5;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
 
 // --- Waveform State ---
-let waveformBuffer = new Float32Array(FS * SECONDS_TO_SHOW);
-let currentScale = 0.05;
+let waveX = new Float32Array(FS * SECONDS_TO_SHOW);
+let waveY = new Float32Array(FS * SECONDS_TO_SHOW);
+let waveZ = new Float32Array(FS * SECONDS_TO_SHOW);
+let currentScale = 3.0;
 
 // --- Spectrogram State ---
 // Let's store 60 rows for example, giving us 120 seconds of history if updated every 2s
@@ -38,11 +40,17 @@ function connectWaveform() {
     wsWaveform.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.y && data.y.length > 0) {
-            // Shift the buffer left by the number of new samples
             const len = data.y.length;
-            waveformBuffer.copyWithin(0, len);
-            // Insert new data at the end (right side)
-            waveformBuffer.set(data.y, waveformBuffer.length - len);
+            waveX.copyWithin(0, len);
+            waveY.copyWithin(0, len);
+            waveZ.copyWithin(0, len);
+            
+            const startIdx = waveX.length - len;
+            for(let i=0; i<len; i++) {
+                waveX[startIdx + i] = data.y[i][0];
+                waveY[startIdx + i] = data.y[i][1];
+                waveZ[startIdx + i] = data.y[i][2];
+            }
         }
     };
     wsWaveform.onopen = updateStatus;
@@ -89,36 +97,31 @@ function drawWaveform() {
     ctxWave.fillStyle = '#000000';
     ctxWave.fillRect(0, 0, width, height);
 
-    // Dynamic Scaling
-    let localMax = 0;
-    for (let i = 0; i < waveformBuffer.length; i++) {
-        const abs = Math.abs(waveformBuffer[i]);
-        if (abs > localMax) localMax = abs;
+    // Hardcode Scale to exactly 3.0G as requested
+    currentScale = 3.0;
+
+    // Helper to draw a single axis line
+    function drawAxis(buffer, color) {
+        ctxWave.strokeStyle = color;
+        ctxWave.lineWidth = 1.5;
+        ctxWave.lineJoin = 'round';
+        ctxWave.beginPath();
+        const len = buffer.length;
+        for (let i = 0; i < len; i++) {
+            const x = (i / (len - 1)) * width;
+            const normalized = (buffer[i] / currentScale + 1) / 2;
+            const y = height - (normalized * height);
+            
+            if (i === 0) ctxWave.moveTo(x, y);
+            else ctxWave.lineTo(x, y);
+        }
+        ctxWave.stroke();
     }
     
-    // Smooth scale adjustment
-    const targetScale = Math.max(0.01, localMax * 1.5);
-    currentScale += (targetScale - currentScale) * 0.1;
-    
-    document.getElementById('scale-indicator').innerText = `±${currentScale.toFixed(3)}G`;
-    
-    const isAlert = localMax > 0.04;
-    ctxWave.strokeStyle = isAlert ? '#ef4444' : '#10b981';
-    ctxWave.lineWidth = 2;
-    ctxWave.lineJoin = 'round';
-    
-    ctxWave.beginPath();
-    const len = waveformBuffer.length;
-    for (let i = 0; i < len; i++) {
-        const x = (i / (len - 1)) * width;
-        // Map value from [-currentScale, +currentScale] to [height, 0]
-        const normalized = (waveformBuffer[i] / currentScale + 1) / 2;
-        const y = height - (normalized * height);
-        
-        if (i === 0) ctxWave.moveTo(x, y);
-        else ctxWave.lineTo(x, y);
-    }
-    ctxWave.stroke();
+    // Draw Z (Blue), Y (Green), X (Red). Draw Z last so it's on top if overlapping
+    drawAxis(waveX, '#ef4444');
+    drawAxis(waveY, '#10b981');
+    drawAxis(waveZ, '#3b82f6');
     
     // Request next frame for that buttery 60fps Blit mode effect
     requestAnimationFrame(drawWaveform);
