@@ -246,12 +246,16 @@
         <!-- Spectrogram Panel -->
         <div class="panel" style="flex: 1.5;">
             <div class="panel-header">
-                <span>時頻圖/頻譜</span>
+                <span>時頻圖/頻譜 (1s Overlap)</span>
             </div>
             <div class="spectro-container">
                 <canvas id="spectroCanvas"></canvas>
-                <div class="axis-label" style="bottom: 5px; left: 10px;">0.5 Hz</div>
-                <div class="axis-label" style="bottom: 5px; right: 10px;">50.0 Hz</div>
+                <!-- Horizontal Axis: Time -->
+                <div class="axis-label" style="bottom: 5px; right: 10px;">NOW (-2s)</div>
+                <div class="axis-label" style="bottom: 5px; left: 10px;">T-5s</div>
+                <!-- Vertical Axis: Frequency -->
+                <div class="axis-label" style="bottom: 20px; left: 10px;">0.5 Hz</div>
+                <div class="axis-label" style="top: 10px; left: 10px;">50.0 Hz</div>
             </div>
         </div>
     </div>

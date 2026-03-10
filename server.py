@@ -20,7 +20,7 @@ app = FastAPI()
 FS = 100.0  # 100 Hz sampling rate
 DATA_INTERVAL_MS = int(1000 / FS)
 FFT_WINDOW_SEC = 2.0
-SPECTRO_PUBLISH_RATE = 2.0  # seconds between FFT updates
+SPECTRO_PUBLISH_RATE = 1.0 # Publish every 1s, but with a 2s overlapping observation string
 UI_STREAM_MS = 33 # 30fps websocket push
 
 # --- Global Buffers & Locks ---

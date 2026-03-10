@@ -22,8 +22,8 @@ let waveZ = new Float32Array(FS * SECONDS_TO_SHOW);
 let currentScale = 3.0;
 
 // --- Spectrogram State ---
-// Let's store 60 rows for example, giving us 120 seconds of history if updated every 2s
-const SPEC_ROWS = 60; 
+// Let's store 5 rows, giving us 5 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
+const SPEC_ROWS = 5; 
 let specHistory = []; // array of Float32Arrays
 let maxFreqBins = 0; // Will be set when first payload arrives
 
@@ -141,15 +141,14 @@ function drawWaveform() {
 }
 
 // --- Render Loop (Spectrogram) ---
-// Note: We only call this when a new WebSocket frame arrives (every 2s), 
-// because a heatmap redrawing at 60fps is computationally expensive and unnecessary.
+// Note: We only call this when a new WebSocket frame arrives (every 1s)
 function drawSpectrogram() {
     if (specHistory.length === 0) return;
     
     const width = spectroCanvas.width;
     const height = spectroCanvas.height;
-    const rowHeight = height / SPEC_ROWS;
-    const colWidth = width / maxFreqBins;
+    const colWidth = width / SPEC_ROWS; // Time mapped to Width
+    const rowHeight = height / maxFreqBins; // Frequency mapped to Height
     
     ctxSpec.fillStyle = '#000000';
     ctxSpec.fillRect(0, 0, width, height);
@@ -162,23 +161,27 @@ function drawSpectrogram() {
         }
     }
     
-    // Draw from top (index 0 is newest) to bottom
+    // Draw columns (Time). Index 0 is newest. Let's draw newest on the far right.
     const limit = Math.min(SPEC_ROWS, specHistory.length);
-    for (let r = 0; r < limit; r++) {
-        const rowData = specHistory[r];
-        const yPos = r * rowHeight;
+    for (let t = 0; t < limit; t++) {
+        const timeData = specHistory[t];
+        // Center of the canvas is (limit-1). Newest (t=0) is at the far right.
+        const xPos = (limit - 1 - t) * colWidth;
         
-        for (let c = 0; c < maxFreqBins; c++) {
+        for (let f = 0; f < maxFreqBins; f++) {
             // Normalize value 0 to 1
-            let mag = rowData[c] / globalMax;
+            let mag = timeData[f] / globalMax;
             if (mag > 1) mag = 1;
             
             // Map magnitude to a standard heatmap color (Viridis-ish approximation)
-            // Low = Blue, Mid = Green, High = Yellow
             const hue = (1.0 - mag) * 240; 
             ctxSpec.fillStyle = `hsl(${hue}, 100%, ${mag > 0.1 ? 50 : 10}%)`;
             
-            ctxSpec.fillRect(c * colWidth, yPos, Math.ceil(colWidth), Math.ceil(rowHeight));
+            // Frequencies map to Height. Lowest freq (f=0) should be drawn at the very bottom.
+            // So we invert the Y axis visually.
+            const yPos = height - ((f + 1) * rowHeight);
+            
+            ctxSpec.fillRect(xPos, yPos, Math.ceil(colWidth), Math.ceil(rowHeight));
         }
     }
 }
