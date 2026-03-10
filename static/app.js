@@ -85,13 +85,47 @@ function connectSpectro() {
     };
 }
 
+// --- i18n Localization ---
+let i18nDict = {};
+
+async function loadLanguage() {
+    try {
+        // Fetch language setting from configuration file
+        const confRes = await fetch('/static/config.json');
+        const config = await confRes.json();
+        const lang = config.language || 'en';
+
+        const response = await fetch(`/static/${lang}.json`);
+        i18nDict = await response.json();
+        
+        // Update DOM elements that possess the data-i18n tag
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18nDict[key]) {
+                el.innerHTML = i18nDict[key];
+            }
+        });
+        
+        // Ensure dynamic status element also gets updated if it is currently rendered
+        updateStatus();
+    } catch (e) {
+        console.error("Failed to load translation configuration:", e);
+    }
+}
+
+// Trigger initial i18n translation pass upon boot
+loadLanguage();
+
 function updateStatus() {
     const el = document.getElementById('conn-status');
+    const txtLive = i18nDict['status_live'] || 'Streaming LIVE';
+    const txtOffline = i18nDict['status_offline'] || 'OFFLINE';
+
     if (wsWaveform && wsWaveform.readyState === WebSocket.OPEN) {
-        el.innerHTML = `<div class="status-dot"></div> Streaming LIVE`;
+        el.innerHTML = `<div class="status-dot"></div> <span data-i18n="status_live">${txtLive}</span>`;
         el.style.color = 'var(--accent-green)';
     } else {
-        el.innerHTML = `<div class="status-dot" style="background: var(--accent-red); box-shadow: none; animation: none;"></div> OFFLINE`;
+        el.innerHTML = `<div class="status-dot" style="background: var(--accent-red); box-shadow: none; animation: none;"></div> <span data-i18n="status_offline">${txtOffline}</span>`;
         el.style.color = 'var(--accent-red)';
     }
 }

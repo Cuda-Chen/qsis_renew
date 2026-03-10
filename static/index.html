@@ -3,23 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Siesmic Monitoring</title>
+    <title data-i18n="page_title">Siesmic Monitoring</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
         :root {
-            --bg-dark: #0f172a;
-            --panel-bg: #1e293b;
+            --bg-dark: #0a0f1c;
+            --panel-bg: rgba(30, 41, 59, 0.4);
             --text-main: #f8fafc;
             --accent-green: #10b981;
             --accent-red: #ef4444;
-            --border-color: #334155;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --glow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
 
         body {
             margin: 0;
             padding: 0;
             background-color: var(--bg-dark);
+            background-image: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0a0f1c 70%);
             color: var(--text-main);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
             display: flex;
             flex-direction: row;
             height: 100vh;
@@ -59,12 +63,14 @@
             font-weight: 700;
             cursor: pointer;
             width: 100%;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease-in-out;
             text-align: center;
         }
         
         .download-btn:hover {
-            opacity: 0.8;
+            opacity: 1;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
         }
 
         .main-content {
@@ -89,8 +95,11 @@
         h1 {
             margin: 0;
             font-size: 1.5rem;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: -0.025em;
+            background: linear-gradient(90deg, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .status-badge {
@@ -122,43 +131,48 @@
 
         .panel {
             background-color: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-radius: 12px;
             border: 1px solid var(--border-color);
-            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            box-shadow: var(--glow);
+            overflow: hidden;
         }
 
         .panel-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.875rem;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.80rem;
             color: #94a3b8;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .waveform-container {
+        .waveform-container, .spectro-container {
             flex: 1;
             position: relative;
             width: 100%;
             overflow: hidden;
-            background: #000;
-            border-radius: 8px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+            background: transparent;
         }
 
-        .spectro-container {
-            flex: 1;
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-            background: #000;
-            border-radius: 8px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        .playhead {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 1px;
+            height: 100%;
+            background-color: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green), 0 0 5px var(--accent-green);
+            z-index: 10;
+            pointer-events: none;
         }
 
         canvas {
@@ -194,65 +208,68 @@
 </head>
 <body>
     <div class="sidebar">
-        <div class="sidebar-title">功能</div>
-        <button id="downloadMseedBtn" class="download-btn">下載<br/>MiniSEED</button>
+        <div class="sidebar-title" data-i18n="sidebar_title">功能</div>
+        <button id="downloadMseedBtn" class="download-btn" data-i18n="download_btn">下載<br/>MiniSEED</button>
     </div>
     
     <div class="main-content">
         <div class="header">
-            <h1>QSIS資料處理系統</h1>
+            <h1 data-i18n="main_header">QSIS資料處理系統</h1>
             <div class="status-badge" id="conn-status">
                 <div class="status-dot"></div>
-                Connecting...
+                <span data-i18n="status_connecting">Connecting...</span>
             </div>
         </div>
 
         <!-- Waveform Panel Z -->
         <div class="panel" style="flex: 1;">
             <div class="panel-header">
-                <span>波形串流 Z</span>
+                <span data-i18n="panel_z">波形串流 Z</span>
             </div>
             <div class="waveform-container">
                 <canvas id="canvasZ"></canvas>
                 <div class="grid-overlay"></div>
+                <div class="playhead"></div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <div class="axis-label" style="top: 5px; left: 10px;">Z (Blue)</div>
+                <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_z">Z (Blue)</div>
             </div>
         </div>
 
         <!-- Waveform Panel N (Y mapping) -->
         <div class="panel" style="flex: 1;">
             <div class="panel-header">
-                <span>波形串流 N</span>
+                <span data-i18n="panel_n">波形串流 N</span>
             </div>
             <div class="waveform-container">
                 <canvas id="canvasN"></canvas>
                 <div class="grid-overlay"></div>
+                <div class="playhead"></div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <div class="axis-label" style="top: 5px; left: 10px;">N (Green)</div>
+                <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_n">N (Green)</div>
             </div>
         </div>
 
         <!-- Waveform Panel E (X mapping) -->
         <div class="panel" style="flex: 1;">
             <div class="panel-header">
-                <span>波形串流 E</span>
+                <span data-i18n="panel_e">波形串流 E</span>
             </div>
             <div class="waveform-container">
                 <canvas id="canvasE"></canvas>
                 <div class="grid-overlay"></div>
+                <div class="playhead"></div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <div class="axis-label" style="top: 5px; left: 10px;">E (Red)</div>
+                <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_e">E (Red)</div>
             </div>
         </div>
 
         <!-- Spectrogram Panel -->
         <div class="panel" style="flex: 1.5;">
             <div class="panel-header">
-                <span>時頻圖/頻譜 (1s Overlap)</span>
+                <span data-i18n="panel_spec">時頻圖/頻譜 (1s Overlap)</span>
             </div>
             <div class="spectro-container">
                 <canvas id="spectroCanvas"></canvas>

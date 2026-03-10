@@ -1,0 +1,16 @@
+{
+  "page_title": "Siesmic Monitoring",
+  "sidebar_title": "功能",
+  "download_btn": "下載<br/>MiniSEED",
+  "main_header": "QSIS資料處理系統",
+  "status_connecting": "Connecting...",
+  "status_live": "Streaming LIVE",
+  "status_offline": "OFFLINE",
+  "panel_z": "波形串流 Z",
+  "axis_z": "Z (Blue)",
+  "panel_n": "波形串流 N",
+  "axis_n": "N (Green)",
+  "panel_e": "波形串流 E",
+  "axis_e": "E (Red)",
+  "panel_spec": "時頻圖/頻譜 (1s Overlap)"
+}

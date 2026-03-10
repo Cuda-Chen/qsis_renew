@@ -1,0 +1,16 @@
+{
+  "page_title": "Phidgets Seismic Monitoring",
+  "sidebar_title": "TOOLS",
+  "download_btn": "Export<br/>MiniSEED",
+  "main_header": "Phidgets Seismic Dashboard",
+  "status_connecting": "Connecting...",
+  "status_live": "Streaming LIVE",
+  "status_offline": "OFFLINE",
+  "panel_z": "Channel Z Analytics",
+  "axis_z": "Z-Axis (Vertical)",
+  "panel_n": "Channel N Analytics",
+  "axis_n": "N-Axis (North-South)",
+  "panel_e": "Channel E Analytics",
+  "axis_e": "E-Axis (East-West)",
+  "panel_spec": "FFT Spectrogram (1s Overlap)"
+}
