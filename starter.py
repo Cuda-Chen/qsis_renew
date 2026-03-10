@@ -13,7 +13,8 @@ BROKER_ADDRESS = "localhost"
 MQTT_PORT = 1883
 TOPIC = "telemetry/seismic"
 SPECTROGRAM_TOPIC = "telemetry/spectrogram"
-DATA_INTERVAL_MS = 20  # 20ms = 50Hz Sampling Rate
+#DATA_INTERVAL_MS = 20  # 20ms = 50Hz Sampling Rate
+DATA_INTERVAL_MS = 10 # 10ms -> 100Hz Sampling Rate
 
 class SeismicFilter:
     def __init__(self, fs=50.0, lowcut=0.5, highcut=20.0, order=4):
@@ -121,7 +122,7 @@ def phidget_seismic_generator():
     
     # Instantiate both processors
     dsp = SeismicFilter(fs=fs, lowcut=0.5, highcut=20.0, order=4)
-    spectro = SpectrogramCalculator(fs=fs, window_sec=5.0, publish_rate=5.0)
+    spectro = SpectrogramCalculator(fs=fs, window_sec=2.0, publish_rate=2.0)
     
     def on_acceleration_change(self, acceleration, timestamp):
         # 1. Process the waveform
