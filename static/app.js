@@ -166,7 +166,9 @@ function drawSpectrogram() {
     for (let t = 0; t < limit; t++) {
         const timeData = specHistory[t];
         // Center of the canvas is (limit-1). Newest (t=0) is at the far right.
-        const xPos = (limit - 1 - t) * colWidth;
+        // We subtract 1 more (-2) because the FFT inherently represents data [NOW-2s, NOW], 
+        // aligning it visually under the 1-second old waveforms.
+        const xPos = (limit - 2 - t) * colWidth;
         
         for (let f = 0; f < maxFreqBins; f++) {
             // Normalize value 0 to 1
