@@ -45,3 +45,10 @@ This layout cleanly separates the heavy Python data processing from the high-spe
 - **Client**: `HTML5 Canvas API`
 
 *Note: Always remember to handle device locking gracefully in `finally:` blocks for hardware sensors.*
+
+## 7. Continuous Archival Storage (MiniSEED)
+When upgrading a live in-memory dashboard into a serious continuous 24/7 logging system (like a seismograph), follow these precise specifications for `obspy`:
+- **Blockette Sizing for Disk vs Network**: While 512-byte Miniseed blockettes are heavily preferred for low-latency network protocols (e.g. SeedLink) to prevent transmission buffering lag, **4096-byte blockettes (`reclen=4096`) are the golden standard for physical disk archiving**. The 4096-byte size vastly reduces the fixed-header overhead ratio, maximizing physical disk storage density and random-access speeds.
+- **Background Flushes**: Never append to disk directly from the high-speed hardware reading thread. Append incoming data safely via a threading lock into an intermediate Python `deque()`, then spawn a 3rd entirely independent `archiver_loop` thread that wakes up every 10-60 seconds to consume that queue, format the Obspy traces, and execute the physical binary unbuffered append (`"ab"`).
+- **Strict UTC Midnight Rollovers**: Archival systems conventionally organize logs in an `SNLCYJ` (Station, Network, Location, Channel, Year, Julian Day) format. To prevent data spanning the `23:59:59` to `00:00:01` timeline from accidentally bleeding across two daily files due to thread latency, **never derive the log filename from the system's execution timestamp**. Always mathematically derive the target Julian Day exclusively from the precisely extrapolated `obspy.UTCDateTime(starttime)` of the very first data sample within the chunk being written.
+- **Zero-Overhead Retention Policies**: Do not run constant file-stat scraping on the server. If building a standard "Keep 180 Days" retention feature, only trigger the strict Python `os.listdir()` and `os.remove()` garbage collection logic **once per day**, triggered strictly only when the loop detects the UTC Julian Day has incremented since its last execution.

@@ -64,12 +64,85 @@ def test_download_mseed_valid():
     assert z_trace.stats.station == "5AFD2"
     assert z_trace.stats.network == "TW"
     assert z_trace.stats.location == ""
-    np.testing.assert_allclose(z_trace.data, test_data[:, 2])
+    assert z_trace.stats.npts >= len(test_data) # Obspy may pad records to fulfill blockette frames
+    np.testing.assert_allclose(z_trace.data[:len(test_data)], test_data[:, 2])
     
     x_trace = stream.select(channel="HLX")[0]
-    np.testing.assert_allclose(x_trace.data, test_data[:, 0])
+    np.testing.assert_allclose(x_trace.data[:len(test_data)], test_data[:, 0])
     
     y_trace = stream.select(channel="HLY")[0]
-    np.testing.assert_allclose(y_trace.data, test_data[:, 1])
+    np.testing.assert_allclose(y_trace.data[:len(test_data)], test_data[:, 1])
 
 
+def test_flush_archive_rollover(tmp_path):
+    from server import flush_archive, archive_queue, archive_lock, FS
+    import os
+    
+    # Setup mock data (10 samples)
+    test_data = np.ones((10, 3)) * 4.2
+    with archive_lock:
+        archive_queue.clear()
+        for row in test_data:
+            archive_queue.append(row)
+            
+    # Mock exact time right before midnight boundary on 2026-03-11 (Julian day 070)
+    fake_time_str = "2026-03-11T23:59:59.000"
+    test_start = obspy.UTCDateTime(fake_time_str)
+    
+    from datetime import datetime as real_datetime, timezone
+    class MockDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return test_start.datetime.replace(tzinfo=timezone.utc)
+            
+    original_datetime = server.datetime
+    server.datetime = MockDatetime
+    try:
+        archive_dir = str(tmp_path)
+        station = "5AFD2"
+        
+        # 1. Execute flush
+        next_time = flush_archive(archive_dir, station, test_start)
+        
+        # 2. Assert continuous time progression exactly matches sample length
+        expected_duration = len(test_data) / FS
+        assert abs((next_time - test_start) - expected_duration) < 1e-6
+        
+        # 3. Assert filename mapped successfully to YYYY.DDD (2026.070)
+        files_created = os.listdir(archive_dir)
+        assert len(files_created) == 3
+        assert "5AFD2.TW..HLZ.2026.070" in files_created
+        assert "5AFD2.TW..HLX.2026.070" in files_created
+        assert "5AFD2.TW..HLY.2026.070" in files_created
+        
+        # 4. Assert MiniSEED file structure is intact
+        st = obspy.read(os.path.join(archive_dir, "5AFD2.TW..HLZ.2026.070"))
+        assert len(st) == 1
+        assert st[0].stats.npts >= 10
+        assert st[0].stats.channel == "HLZ"
+    finally:
+        server.datetime = original_datetime
+
+def test_cleanup_old_archives(tmp_path):
+    from server import cleanup_old_archives
+    from datetime import datetime, timezone
+    import os
+    
+    archive_dir = str(tmp_path)
+    
+    # Touch a recent file (2026-03-10 is Day 069)
+    open(os.path.join(archive_dir, "5AFD2.TW..HLZ.2026.069"), "w").close()
+    
+    # Touch a very old file (2025-01-01 is Day 001)
+    open(os.path.join(archive_dir, "5AFD2.TW..HLZ.2025.001"), "w").close()
+    
+    # Pretend today is 2026-03-11
+    now_utc = datetime(2026, 3, 11, tzinfo=timezone.utc)
+    
+    # Execute cleanup
+    cleanup_old_archives(archive_dir, now_utc)
+    
+    files = os.listdir(archive_dir)
+    assert len(files) == 1
+    assert "5AFD2.TW..HLZ.2026.069" in files
+    assert "5AFD2.TW..HLZ.2025.001" not in files

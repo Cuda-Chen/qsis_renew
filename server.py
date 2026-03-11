@@ -3,7 +3,8 @@ import json
 import threading
 import time
 import io
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timezone, timedelta
 import numpy as np
 from collections import deque
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -75,6 +76,10 @@ WAVEFORM_BUFFER_SIZE = int(FS * 60)
 waveform_ring = RingBuffer(WAVEFORM_BUFFER_SIZE)
 data_lock = threading.Lock()
 
+# Archival queue for continuous disk writing
+archive_queue = deque()
+archive_lock = threading.Lock()
+
 # Latest spectrogram
 latest_spectrogram = None
 
@@ -124,6 +129,8 @@ def hardware_loop():
         f = dsp.process(acc[0], acc[1], acc[2])
         with data_lock:
             waveform_ring.append(f)
+        with archive_lock:
+            archive_queue.append(f)
 
     ch.setOnAccelerationChangeHandler(on_accel)
     
@@ -187,6 +194,97 @@ def math_loop():
             }
 
 threading.Thread(target=math_loop, daemon=True).start()
+
+# --- Continuous Archiver Loop ---
+def flush_archive(archive_dir, station_hex, next_start_time):
+    with archive_lock:
+        if not archive_queue:
+            return next_start_time
+        data_to_write = np.array(archive_queue, dtype=np.float32)
+        archive_queue.clear()
+        
+    npts = len(data_to_write)
+    if npts == 0:
+        return next_start_time
+        
+    now_utc = datetime.now(timezone.utc)
+    
+    if next_start_time is None or abs(now_utc.timestamp() - next_start_time.timestamp) > 5.0:
+        next_start_time = obspy.UTCDateTime(now_utc)
+        
+    # Strictly derive the filename from the first sample's timestamp
+    # This ensures data spanning 23:59:59 doesn't accidentally bleed into the next day's file
+    # due to thread execution latency
+    year_str = next_start_time.datetime.replace(tzinfo=timezone.utc).strftime('%Y')
+    jday_str = next_start_time.datetime.replace(tzinfo=timezone.utc).strftime('%j')
+    
+    stats_base = {
+        'network': 'TW', 
+        'station': station_hex, 
+        'location': '', 
+        'npts': npts, 
+        'sampling_rate': FS, 
+        'starttime': next_start_time
+    }
+    
+    # Write Z channel (col 2)
+    trace_z = Trace(data=np.ascontiguousarray(data_to_write[:, 2], dtype=np.float32), header={**stats_base, 'channel': 'HLZ'})
+    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLZ.{year_str}.{jday_str}"), "ab") as f:
+        Stream([trace_z]).write(f, format="MSEED", reclen=4096)
+        
+    # Write X channel (col 0)
+    trace_x = Trace(data=np.ascontiguousarray(data_to_write[:, 0], dtype=np.float32), header={**stats_base, 'channel': 'HLX'})
+    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLX.{year_str}.{jday_str}"), "ab") as f:
+        Stream([trace_x]).write(f, format="MSEED", reclen=4096)
+        
+    # Write Y channel (col 1)
+    trace_y = Trace(data=np.ascontiguousarray(data_to_write[:, 1], dtype=np.float32), header={**stats_base, 'channel': 'HLY'})
+    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLY.{year_str}.{jday_str}"), "ab") as f:
+        Stream([trace_y]).write(f, format="MSEED", reclen=4096)
+        
+    # Return the incremented start time for contiguous subsequent blocks
+    return next_start_time + (npts / FS)
+
+def cleanup_old_archives(archive_dir, now_utc):
+    cutoff_date = now_utc - timedelta(days=180)
+    for fname in os.listdir(archive_dir):
+        parts = fname.split('.')
+        if len(parts) >= 6:
+            try:
+                f_year = int(parts[-2])
+                f_jday = int(parts[-1])
+                f_date = datetime.strptime(f"{f_year}-{f_jday}", "%Y-%j").replace(tzinfo=timezone.utc)
+                if f_date < cutoff_date:
+                    os.remove(os.path.join(archive_dir, fname))
+            except ValueError:
+                pass
+
+def archiver_loop():
+    global latest_sensor_id
+    archive_dir = "mseed_archive"
+    os.makedirs(archive_dir, exist_ok=True)
+    
+    while latest_sensor_id is None:
+        time.sleep(1)
+        
+    station_hex = f"{latest_sensor_id:05X}"
+    current_jday = datetime.now(timezone.utc).strftime('%j')
+    next_start_time = None
+    
+    while True:
+        time.sleep(10) # flush to disk every 10 seconds
+        
+        next_start_time = flush_archive(archive_dir, station_hex, next_start_time)
+        
+        now_utc = datetime.now(timezone.utc)
+        jday_str = now_utc.strftime('%j')
+        
+        # 180-Day Cleanup check (execute upon detecting a midnight rollover)
+        if jday_str != current_jday:
+            current_jday = jday_str
+            cleanup_old_archives(archive_dir, now_utc)
+
+threading.Thread(target=archiver_loop, daemon=True).start()
 
 # --- WebSockets ---
 waveform_connections = set()
