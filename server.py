@@ -78,6 +78,9 @@ data_lock = threading.Lock()
 # Latest spectrogram
 latest_spectrogram = None
 
+# Hardware metadata
+latest_sensor_id = None
+
 # --- DSP ---
 class DSPProcessor:
     def __init__(self):
@@ -129,6 +132,11 @@ def hardware_loop():
         ch.setIsLocal(True)
         ch.openWaitForAttachment(5000)
         ch.setDataInterval(DATA_INTERVAL_MS)
+        
+        # Capture the actual connected device serial number
+        global latest_sensor_id
+        latest_sensor_id = ch.getDeviceSerialNumber()
+        
         while True:
             time.sleep(1)
     except Exception as e:
@@ -218,20 +226,24 @@ def download_mseed():
     data_n = np.ascontiguousarray(data[:, 1], dtype=np.float32)
     data_z = np.ascontiguousarray(data[:, 2], dtype=np.float32)
     
-    stats_base = {'network': 'QS', 'station': 'Z', 'location': '00', 'npts': len(data), 'sampling_rate': FS, 'starttime': start_time}
+    # Format the Station ID as a 5-digit hex string based on the sensor hardware ID
+    # Default to '00000' if the hardware loop hasn't captured it yet
+    station_hex = f"{latest_sensor_id:05X}" if latest_sensor_id is not None else "00000"
     
-    trace_e = Trace(data=data_e, header={**stats_base, 'channel': 'BHE'})
-    trace_n = Trace(data=data_n, header={**stats_base, 'channel': 'BHN'})
-    trace_z = Trace(data=data_z, header={**stats_base, 'channel': 'BHZ'})
+    stats_base = {'network': 'TW', 'station': station_hex, 'location': '', 'npts': len(data), 'sampling_rate': FS, 'starttime': start_time}
     
-    stream = Stream([trace_z, trace_n, trace_e])
+    trace_z = Trace(data=data_z, header={**stats_base, 'channel': 'HLZ'})
+    trace_x = Trace(data=data_e, header={**stats_base, 'channel': 'HLX'})
+    trace_y = Trace(data=data_n, header={**stats_base, 'channel': 'HLY'})
+    
+    stream = Stream([trace_z, trace_x, trace_y])
     
     buf = io.BytesIO()
     stream.write(buf, format="MSEED")
     buf.seek(0)
     
     # User Note: Temporary dynamic length/filename. To be refactored per user feedback later.
-    filename = f"QSIS_Z_{end_time.strftime('%Y%m%d_%H%M%S')}.mseed"
+    filename = f"QSIS_{station_hex}_{end_time.strftime('%Y%m%d_%H%M%S')}.mseed"
     
     return StreamingResponse(
         buf, 

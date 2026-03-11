@@ -34,13 +34,16 @@ def test_download_mseed_valid():
         for row in test_data:
             waveform_ring.append(row)
 
+    # 1.5 Inject a mock hardware ID into the server module so it can be formatted to hex
+    server.latest_sensor_id = 372690  # 372690 in decimal -> 5AFD2 in hex
+
     # 2. Hit the download endpoint
     response = client.get("/api/download_mseed")
     
     # 3. Assert HTTP success
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/vnd.fdsn.mseed"
-    assert "attachment; filename=QSIS_Z_" in response.headers["content-disposition"]
+    assert "attachment; filename=QSIS_5AFD2_" in response.headers["content-disposition"]
     
     # 4. Read the raw bytes back into an Obspy Stream
     mseed_bytes = io.BytesIO(response.content)
@@ -48,17 +51,25 @@ def test_download_mseed_valid():
     
     # 5. Verify the Obspy Stream contents
     assert isinstance(stream, Stream)
-    assert len(stream) == 3  # We expect Z, N, and E channels
+    assert len(stream) == 3  # We expect Z, X, and Y channels
     
     channels_found = [tr.stats.channel for tr in stream]
-    assert "BHZ" in channels_found
-    assert "BHN" in channels_found
-    assert "BHE" in channels_found
+    assert "HLZ" in channels_found
+    assert "HLX" in channels_found
+    assert "HLY" in channels_found
     
-    z_trace = stream.select(channel="BHZ")[0]
+    # The station ID should be the 5-digit hex representation (5AFD2)
+    # The network should be TW, location should be empty
+    z_trace = stream.select(channel="HLZ")[0]
+    assert z_trace.stats.station == "5AFD2"
+    assert z_trace.stats.network == "TW"
+    assert z_trace.stats.location == ""
     np.testing.assert_allclose(z_trace.data, test_data[:, 2])
     
-    e_trace = stream.select(channel="BHE")[0]
-    np.testing.assert_allclose(e_trace.data, test_data[:, 0])
+    x_trace = stream.select(channel="HLX")[0]
+    np.testing.assert_allclose(x_trace.data, test_data[:, 0])
+    
+    y_trace = stream.select(channel="HLY")[0]
+    np.testing.assert_allclose(y_trace.data, test_data[:, 1])
 
 
