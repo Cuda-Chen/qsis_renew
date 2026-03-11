@@ -26,6 +26,7 @@ let currentScale = 3.0;
 const SPEC_ROWS = 60; 
 let specHistory = []; // array of Float32Arrays
 let maxFreqBins = 0; // Will be set when first payload arrives
+let lastSpectroTime = performance.now(); // Track when the last Spectrogram frame arrived
 
 function resize() {
     canvasZ.width = canvasZ.parentElement.clientWidth;
@@ -39,7 +40,20 @@ function resize() {
     spectroCanvas.height = spectroCanvas.parentElement.clientHeight;
 }
 
-window.addEventListener('resize', resize);
+// Use ResizeObserver for robust RWD layout tracking
+const resizeObserver = new ResizeObserver(() => {
+    // requestAnimationFrame prevents "ResizeObserver loop limit exceeded" errors
+    // and minimizes layout thrashing.
+    requestAnimationFrame(resize);
+});
+
+// Observe the parent containers of all canvases
+resizeObserver.observe(canvasZ.parentElement);
+resizeObserver.observe(canvasN.parentElement);
+resizeObserver.observe(canvasE.parentElement);
+resizeObserver.observe(spectroCanvas.parentElement);
+
+// Initial forced resize to catch any synchronous layout values
 resize();
 
 // --- Connect WebSockets ---
@@ -79,8 +93,8 @@ function connectSpectro() {
                 specHistory.pop();
             }
             
-            // We draw the spectrogram statically on every 2s update
-            drawSpectrogram();
+            // Record when we received this frame
+            lastSpectroTime = performance.now();
         }
     };
 }
@@ -170,6 +184,9 @@ function drawWaveform() {
     drawAxis(ctxN, waveY, '#10b981'); // N (Y-axis of sensor)
     drawAxis(ctxE, waveX, '#ef4444'); // E (X-axis of sensor)
     
+    // Draw the Spectrogram in lockstep with the Waveforms
+    drawSpectrogram();
+    
     // Request next frame for that buttery 60fps Blit mode effect
     requestAnimationFrame(drawWaveform);
 }
@@ -195,14 +212,24 @@ function drawSpectrogram() {
         }
     }
     
+    // Calculate the sub-second offset to continuously push the blocks leftwards
+    // We expect a new frame every 1.0s (SPECTRO_PUBLISH_RATE in server.py)
+    // If we've passed 1s, cap it at 1.0 so it doesn't fly offscreen wildly if the network lags
+    const elapsedSeconds = Math.min((performance.now() - lastSpectroTime) / 1000.0, 1.0);
+    const pixelOffsetLeft = elapsedSeconds * colWidth;
+    
     // Draw columns (Time). Index 0 is newest. Let's draw newest on the far right.
     const limit = Math.min(SPEC_ROWS, specHistory.length);
     for (let t = 0; t < limit; t++) {
         const timeData = specHistory[t];
         // Center of the canvas is (limit-1). Newest (t=0) is at the far right.
-        // We subtract 1 more (-2) because the FFT inherently represents data [NOW-2s, NOW], 
-        // aligning it visually under the 1-second old waveforms.
-        const xPos = (limit - 2 - t) * colWidth;
+        // The FFT natively represents data spanning [NOW-2s, NOW].
+        // The waveforms span 60 seconds linearly.
+        // Our X coordinate must dynamically shrink as time passes (pixelOffsetLeft).
+        // CRITICAL FIX: To make the buffer *slide* instead of stretch during the first 60s,
+        // we must draw the newest element (`t=0`) at the far right of the canvas (`SPEC_ROWS - 2`), 
+        // and older elements sequentially to the left.
+        const xPos = (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
         
         for (let f = 0; f < maxFreqBins; f++) {
             // Normalize value 0 to 1
@@ -217,7 +244,8 @@ function drawSpectrogram() {
             // So we invert the Y axis visually.
             const yPos = height - ((f + 1) * rowHeight);
             
-            ctxSpec.fillRect(xPos, yPos, Math.ceil(colWidth), Math.ceil(rowHeight));
+            // Render block, adding 1 to width to eliminate sub-pixel interpolation tearing gaps
+            ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
         }
     }
 }
