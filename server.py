@@ -14,7 +14,18 @@ from Phidget22.Devices.Accelerometer import Accelerometer
 import obspy
 from obspy import Trace, Stream
 
-app = FastAPI()
+app = FastAPI(
+    title="QSIS Streaming Dashboard API",
+    description="""
+API documentation for the QSIS Real-Time Streaming Dashboard.
+
+### WebSocket Endpoints
+Swagger UI does not natively support interactive WebSocket testing, but you can connect to the following endpoints using a WebSocket client:
+* **Waveform Data**: `ws://<host>/ws/waveform` - Pushes 3 channels of 100Hz accelerometer data every ~33ms.
+* **Spectrogram Data**: `ws://<host>/ws/spectrogram` - Pushes frequency bins and magnitudes every 0.5s for the 0.5Hz-50.0Hz range.
+    """,
+    version="1.0.0"
+)
 
 # --- Configuration ---
 FS = 100.0  # 100 Hz sampling rate
@@ -178,13 +189,19 @@ import os
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
+@app.get("/", summary="Dashboard Homepage", tags=["UI"])
 def read_root():
+    """Returns the main HTML interface for the real-time streaming dashboard."""
     with open("static/index.html", "r") as f:
         return HTMLResponse(content=f.read())
 
-@app.get("/api/download_mseed")
+@app.get("/api/download_mseed", summary="Download MiniSEED Data", tags=["Data Export"], response_class=StreamingResponse)
 def download_mseed():
+    """
+    Downloads the last 60 seconds of buffered accelerometer data in MiniSEED format.
+    
+    Returns a `.mseed` file as an attachment. If no data has been collected yet, returns a JSON error message.
+    """
     with data_lock:
         data = waveform_ring.get_all()
         

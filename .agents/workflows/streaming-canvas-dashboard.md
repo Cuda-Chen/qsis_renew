@@ -34,8 +34,14 @@ This layout cleanly separates the heavy Python data processing from the high-spe
 - **Live Timelines**: Avoid drawing heavy numbers directly inside HTML5 Canvas contexts. Generate a rapid Javascript `setInterval(clock, 1000)` that parses the `new Date()` and overwrites floating HTML `div` CSS tags absolutely positioned over the left and right borders of the element bounding boxes.
 - **Hardware Agnostic & White Labeling**: Ensure your UI limits proprietary naming. You can achieve this by storing all Dashboard Labels in a `static/en.json` dictionary. Use Javascript `fetch()` on a master `config.json` to swap the text content of generic `data-i18n` tagged HTML elements. This lets you securely showcase custom analytics dashboards in your portfolio without breaching client confidentiality.
 
-## 4. Example Stack
-- **Python**: `fastapi`, `uvicorn`, `websockets`, `numpy`, `scipy`
+## 5. API Documentation & Testing Architecture
+- **Interactive Swagger UI**: Leverage FastAPI's native OpenAPI integration by enriching `@app.get` definitions with `summary`, `tags`, and explicit `description` strings. 
+- **Documenting WebSockets**: Because Swagger does not inherently expose interactive WebSocket layouts out-of-the-box, clearly detail connecting instructions and data payloads for the `ws://` feeds in the master `FastAPI(description="...")` block.
+- **Unit Testing**: Structure tests logically using `pytest`. Emulate HTTP requests using FastAPI's `TestClient` (which wraps `httpx` / Starlette).
+- **Asynchronous Testing Quirks**: `TestClient.websocket_connect` can be tricky and sometimes causes thread deadlocks on infinite `while True` backend publisher loops if the test context drops rapidly. In robust cases, explicitly design your buffer flush logic or prefer strictly testing the non-socket data extraction endpoints (like `.mseed` downloads) to guarantee CI/CD stability, relying on integration tests for the sockets.
+
+## 6. Example Stack
+- **Python**: `fastapi`, `uvicorn`, `websockets`, `numpy`, `scipy`, `pytest`
 - **Client**: `HTML5 Canvas API`
 
 *Note: Always remember to handle device locking gracefully in `finally:` blocks for hardware sensors.*

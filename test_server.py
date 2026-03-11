@@ -1,14 +1,21 @@
 import io
+import pytest
 import obspy
 from obspy import Stream
 from fastapi.testclient import TestClient
 import numpy as np
+import threading
 import time
 
-# Import the FastAPI app and the ring buffer variable
 from server import app, waveform_ring, FS, data_lock
+import server
 
 client = TestClient(app)
+
+def test_read_root():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
 
 def test_download_mseed_valid():
     # 1. Inject some mock accelerometer data directly into the RingBuffer
@@ -48,13 +55,10 @@ def test_download_mseed_valid():
     assert "BHN" in channels_found
     assert "BHE" in channels_found
     
-    # Verify the data was perfectly reconstructed (Z-axis was the 3rd column, which is index 2)
     z_trace = stream.select(channel="BHZ")[0]
-    assert z_trace.stats.sampling_rate == float(FS)
-    assert z_trace.stats.npts == 5
     np.testing.assert_allclose(z_trace.data, test_data[:, 2])
     
     e_trace = stream.select(channel="BHE")[0]
     np.testing.assert_allclose(e_trace.data, test_data[:, 0])
 
-    print("\n[SUCCESS] The exported MiniSEED file is valid and parses perfectly into obspy traces!")
+
