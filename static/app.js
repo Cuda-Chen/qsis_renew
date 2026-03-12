@@ -28,6 +28,20 @@ let specHistory = []; // array of Float32Arrays
 let maxFreqBins = 0; // Will be set when first payload arrives
 let lastSpectroTime = performance.now(); // Track when the last Spectrogram frame arrived
 
+// --- Spectrogram Controls ---
+let specGain = 1.0;
+let useLogScale = false;
+
+// Pre-compute a 256-entry rainbow LUT at startup
+// Gradient: dark purple (silence) → blue → cyan → green → yellow → orange → red (max)
+const RAINBOW_LUT = new Array(256);
+for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    const hue = (1.0 - t) * 270;
+    const lightness = t > 0.05 ? 50 : 5;
+    RAINBOW_LUT[i] = `hsl(${hue}, 100%, ${lightness}%)`;
+}
+
 function resize() {
     canvasZ.width = canvasZ.parentElement.clientWidth;
     canvasZ.height = canvasZ.parentElement.clientHeight;
@@ -193,7 +207,6 @@ function drawWaveform() {
 }
 
 // --- Render Loop (Spectrogram) ---
-// Note: We only call this when a new WebSocket frame arrives (every 1s)
 function drawSpectrogram() {
     if (specHistory.length === 0) return;
     
@@ -214,8 +227,6 @@ function drawSpectrogram() {
     }
     
     // Calculate the sub-second offset to continuously push the blocks leftwards
-    // We expect a new frame every 1.0s (SPECTRO_PUBLISH_RATE in server.py)
-    // If we've passed 1s, cap it at 1.0 so it doesn't fly offscreen wildly if the network lags
     const elapsedSeconds = Math.min((performance.now() - lastSpectroTime) / 1000.0, 1.0);
     const pixelOffsetLeft = elapsedSeconds * colWidth;
     
@@ -223,29 +234,27 @@ function drawSpectrogram() {
     const limit = Math.min(SPEC_ROWS, specHistory.length);
     for (let t = 0; t < limit; t++) {
         const timeData = specHistory[t];
-        // Center of the canvas is (limit-1). Newest (t=0) is at the far right.
-        // The FFT natively represents data spanning [NOW-2s, NOW].
-        // The waveforms span 60 seconds linearly.
-        // Our X coordinate must dynamically shrink as time passes (pixelOffsetLeft).
-        // CRITICAL FIX: To make the buffer *slide* instead of stretch during the first 60s,
-        // we must draw the newest element (`t=0`) at the far right of the canvas (`SPEC_ROWS - 2`), 
-        // and older elements sequentially to the left.
         const xPos = (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
         
         for (let f = 0; f < maxFreqBins; f++) {
-            // Normalize value 0 to 1
-            let mag = timeData[f] / globalMax;
+            // Normalize value 0 to 1, apply gain multiplier
+            let mag = (timeData[f] / globalMax) * specGain;
             if (mag > 1) mag = 1;
+            if (mag < 0) mag = 0;
             
-            // Map magnitude to a standard heatmap color (Viridis-ish approximation)
-            const hue = (1.0 - mag) * 240; 
-            ctxSpec.fillStyle = `hsl(${hue}, 100%, ${mag > 0.1 ? 50 : 10}%)`;
+            // Optional log scale: compress dynamic range to reveal weak signals
+            if (useLogScale) {
+                mag = Math.log10(1 + mag * 9);
+            }
             
-            // Frequencies map to Height. Lowest freq (f=0) should be drawn at the very bottom.
-            // So we invert the Y axis visually.
+            // Rainbow LUT lookup (0–255)
+            const lutIdx = Math.min(255, Math.floor(mag * 255));
+            ctxSpec.fillStyle = RAINBOW_LUT[lutIdx];
+            
+            // Frequencies map to Height. Lowest freq (f=0) at the very bottom.
             const yPos = height - ((f + 1) * rowHeight);
             
-            // Render block, adding 1 to width to eliminate sub-pixel interpolation tearing gaps
+            // Render block, adding 1 to width to eliminate sub-pixel tearing gaps
             ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
         }
     }
@@ -258,8 +267,30 @@ requestAnimationFrame(drawWaveform);
 
 // Export Data
 document.getElementById('downloadMseedBtn').addEventListener('click', () => {
-    // We simply redirect the browser to the GET endpoint. It will trigger a native save-as dialog.
     window.location.href = '/api/download_mseed';
+});
+
+// --- Spectrogram Controls ---
+const gainSlider = document.getElementById('gainSlider');
+const gainValueLabel = document.getElementById('gainValue');
+const btnLin = document.getElementById('btnLin');
+const btnLog = document.getElementById('btnLog');
+
+gainSlider.addEventListener('input', () => {
+    specGain = parseFloat(gainSlider.value);
+    gainValueLabel.textContent = specGain.toFixed(1) + 'x';
+});
+
+btnLin.addEventListener('click', () => {
+    useLogScale = false;
+    btnLin.classList.add('active');
+    btnLog.classList.remove('active');
+});
+
+btnLog.addEventListener('click', () => {
+    useLogScale = true;
+    btnLog.classList.add('active');
+    btnLin.classList.remove('active');
 });
 
 // --- Dynamic Datetime Clock ---

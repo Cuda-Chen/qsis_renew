@@ -12,5 +12,7 @@
   "axis_n": "N-Axis (North-South)",
   "panel_e": "Channel E Analytics",
   "axis_e": "E-Axis (East-West)",
-  "panel_spec": "FFT Spectrogram (1s Overlap)"
+  "panel_spec": "FFT Spectrogram (1s Overlap)",
+  "scale_label": "SCALE",
+  "gain_label": "GAIN"
 }

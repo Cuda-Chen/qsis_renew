@@ -224,12 +224,84 @@
             bottom: 0;
             background: linear-gradient(to top, rgba(239, 68, 68, 0.35), transparent);
         }
+
+        .sidebar-control {
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sidebar-label {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+        }
+
+        .sidebar-value {
+            font-size: 0.7rem;
+            color: #f8fafc;
+            font-family: 'Courier New', monospace;
+        }
+
+        #gainSlider {
+            width: 80%;
+            accent-color: var(--accent-green);
+            cursor: pointer;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 2px;
+            width: 100%;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 4px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: #64748b;
+            font-size: 0.65rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.15s ease;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-green);
+            color: var(--bg-dark);
+            border-color: var(--accent-green);
+        }
+
+        .toggle-btn:hover:not(.active) {
+            color: #94a3b8;
+            border-color: #475569;
+        }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <div class="sidebar-title" data-i18n="sidebar_title">功能</div>
         <button id="downloadMseedBtn" class="download-btn" data-i18n="download_btn">下載<br/>MiniSEED</button>
+        <div class="sidebar-control">
+            <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
+            <div class="toggle-group">
+                <button id="btnLin" class="toggle-btn active">LIN</button>
+                <button id="btnLog" class="toggle-btn">LOG</button>
+            </div>
+        </div>
+        <div class="sidebar-control">
+            <label class="sidebar-label" data-i18n="gain_label">GAIN</label>
+            <input type="range" id="gainSlider" min="0.1" max="10" step="0.1" value="1.0">
+            <span id="gainValue" class="sidebar-value">1.0x</span>
+        </div>
     </div>
     
     <div class="main-content">
