@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Archive of MiniSEED
+mseed_archive/
