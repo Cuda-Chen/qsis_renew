@@ -204,6 +204,25 @@
             font-size: 11px;
             pointer-events: none;
         }
+
+        .clip-zone {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .clip-zone.top {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(239, 68, 68, 0.35), transparent);
+        }
+
+        .clip-zone.bottom {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(239, 68, 68, 0.35), transparent);
+        }
     </style>
 </head>
 <body>
@@ -230,6 +249,8 @@
                 <canvas id="canvasZ"></canvas>
                 <div class="grid-overlay"></div>
                 <div class="playhead"></div>
+                <div class="clip-zone top"></div>
+                <div class="clip-zone bottom"></div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
                 <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_z">Z (Blue)</div>
@@ -245,6 +266,8 @@
                 <canvas id="canvasN"></canvas>
                 <div class="grid-overlay"></div>
                 <div class="playhead"></div>
+                <div class="clip-zone top"></div>
+                <div class="clip-zone bottom"></div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
                 <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_n">N (Green)</div>
@@ -260,6 +283,8 @@
                 <canvas id="canvasE"></canvas>
                 <div class="grid-overlay"></div>
                 <div class="playhead"></div>
+                <div class="clip-zone top"></div>
+                <div class="clip-zone bottom"></div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
                 <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_e">E (Red)</div>

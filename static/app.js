@@ -158,8 +158,9 @@ function drawWaveform() {
     ctxE.fillStyle = '#000000';
     ctxE.fillRect(0, 0, width, height);
 
-    // Hardcode Scale to exactly 3.0G as requested
-    currentScale = 3.0;
+    // Match Y-axis to the Phidget sensor's physical ±2.0G range.
+    // Clipped signals will visually flatline at the canvas edge.
+    currentScale = 2.0;
 
     // Helper to draw a single axis line
     function drawAxis(ctx, buffer, color) {
