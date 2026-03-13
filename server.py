@@ -227,20 +227,23 @@ def flush_archive(archive_dir, station_hex, next_start_time):
         'starttime': next_start_time
     }
     
+    # Set record length
+    reclen = 512
+
     # Write Z channel (col 2)
     trace_z = Trace(data=np.ascontiguousarray(data_to_write[:, 2], dtype=np.float32), header={**stats_base, 'channel': 'HLZ'})
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLZ.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_z]).write(f, format="MSEED", reclen=4096)
+        Stream([trace_z]).write(f, format="MSEED", reclen=reclen)
         
     # Write X channel (col 0)
     trace_x = Trace(data=np.ascontiguousarray(data_to_write[:, 0], dtype=np.float32), header={**stats_base, 'channel': 'HLX'})
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLX.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_x]).write(f, format="MSEED", reclen=4096)
+        Stream([trace_x]).write(f, format="MSEED", reclen=reclen)
         
     # Write Y channel (col 1)
     trace_y = Trace(data=np.ascontiguousarray(data_to_write[:, 1], dtype=np.float32), header={**stats_base, 'channel': 'HLY'})
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLY.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_y]).write(f, format="MSEED", reclen=4096)
+        Stream([trace_y]).write(f, format="MSEED", reclen=reclen)
         
     # Return the incremented start time for contiguous subsequent blocks
     return next_start_time + (npts / FS)
