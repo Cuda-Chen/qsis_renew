@@ -166,8 +166,18 @@ def math_loop():
     # (magnitude operation introduces a DC offset and harmonics)
     sos_spec = butter(4, [0.5, 49.9], btype='bandpass', fs=FS, output='sos')
     
+    next_tick = time.monotonic() + SPECTRO_PUBLISH_RATE
     while True:
-        time.sleep(SPECTRO_PUBLISH_RATE)
+        now = time.monotonic()
+        sleep_duration = next_tick - now
+        if sleep_duration > 0:
+            time.sleep(sleep_duration)
+        else:
+            # If we fall behind, reset timer to maintain alignment without bursting
+            next_tick = now
+            
+        next_tick += SPECTRO_PUBLISH_RATE
+        
         with data_lock:
             data_window = waveform_ring.get_window(window_samples)
             
@@ -228,7 +238,7 @@ def flush_archive(archive_dir, station_hex, next_start_time):
     }
     
     # Set record length
-    reclen = 512
+    reclen = 4096
 
     # Write Z channel (col 2)
     trace_z = Trace(data=np.ascontiguousarray(data_to_write[:, 2], dtype=np.float32), header={**stats_base, 'channel': 'HLZ'})
