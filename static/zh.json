@@ -6,6 +6,7 @@
   "status_connecting": "Connecting...",
   "status_live": "Streaming LIVE",
   "status_offline": "OFFLINE",
+  "panel_waveforms": "波形串流 (Z, N, E)",
   "panel_z": "波形串流 Z",
   "axis_z": "Z (Blue)",
   "panel_n": "波形串流 N",

@@ -346,54 +346,41 @@
             </div>
         </div>
 
-        <!-- Waveform Panel Z -->
-        <div class="panel" style="flex: 1;">
+        <!-- Waveform Panel (Z, N, E combined) -->
+        <div class="panel" style="flex: 2; display: flex; flex-direction: column;">
             <div class="panel-header">
-                <span data-i18n="panel_z">波形串流 Z</span>
+                <span data-i18n="panel_waveforms">波形串流 (Z, N, E)</span>
             </div>
-            <div class="waveform-container">
-                <canvas id="canvasZ"></canvas>
-                <div class="grid-overlay"></div>
-                <div class="playhead"></div>
-                <div class="clip-zone top"></div>
-                <div class="clip-zone bottom"></div>
-                <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
-                <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_z">Z (Blue)</div>
-            </div>
-        </div>
-
-        <!-- Waveform Panel N (Y mapping) -->
-        <div class="panel" style="flex: 1;">
-            <div class="panel-header">
-                <span data-i18n="panel_n">波形串流 N</span>
-            </div>
-            <div class="waveform-container">
-                <canvas id="canvasN"></canvas>
-                <div class="grid-overlay"></div>
-                <div class="playhead"></div>
-                <div class="clip-zone top"></div>
-                <div class="clip-zone bottom"></div>
-                <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
-                <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_n">N (Green)</div>
-            </div>
-        </div>
-
-        <!-- Waveform Panel E (X mapping) -->
-        <div class="panel" style="flex: 1;">
-            <div class="panel-header">
-                <span data-i18n="panel_e">波形串流 E</span>
-            </div>
-            <div class="waveform-container">
-                <canvas id="canvasE"></canvas>
-                <div class="grid-overlay"></div>
-                <div class="playhead"></div>
-                <div class="clip-zone top"></div>
-                <div class="clip-zone bottom"></div>
-                <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
-                <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_e">E (Red)</div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;">
+                <!-- Z Component -->
+                <div class="waveform-container" style="flex: 1; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <canvas id="canvasZ"></canvas>
+                    <div class="grid-overlay"></div>
+                    <div class="playhead"></div>
+                    <div class="clip-zone top"></div>
+                    <div class="clip-zone bottom"></div>
+                    <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_z">Z (Blue)</div>
+                    <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
+                </div>
+                <!-- N Component -->
+                <div class="waveform-container" style="flex: 1; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <canvas id="canvasN"></canvas>
+                    <div class="grid-overlay"></div>
+                    <div class="playhead"></div>
+                    <div class="clip-zone top"></div>
+                    <div class="clip-zone bottom"></div>
+                    <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_n">N (Green)</div>
+                </div>
+                <!-- E Component -->
+                <div class="waveform-container" style="flex: 1;">
+                    <canvas id="canvasE"></canvas>
+                    <div class="grid-overlay"></div>
+                    <div class="playhead"></div>
+                    <div class="clip-zone top"></div>
+                    <div class="clip-zone bottom"></div>
+                    <div class="axis-label" style="top: 5px; left: 10px;" data-i18n="axis_e">E (Red)</div>
+                    <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
+                </div>
             </div>
         </div>
 

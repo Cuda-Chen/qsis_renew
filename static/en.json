@@ -6,6 +6,7 @@
   "status_connecting": "Connecting...",
   "status_live": "Streaming LIVE",
   "status_offline": "OFFLINE",
+  "panel_waveforms": "Waveforms (Z, N, E)",
   "panel_z": "Channel Z Analytics",
   "axis_z": "Z-Axis (Vertical)",
   "panel_n": "Channel N Analytics",

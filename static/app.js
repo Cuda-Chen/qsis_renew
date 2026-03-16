@@ -23,7 +23,7 @@ let currentScale = 3.0;
 
 // --- Spectrogram State ---
 // Let's store 60 rows, giving us 60 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
-const SPEC_ROWS = 60; 
+const SPEC_ROWS = 60;
 let specHistory = []; // array of Float32Arrays
 let maxFreqBins = 0; // Will be set when first payload arrives
 let lastSpectroTime = performance.now(); // Track when the last Spectrogram frame arrived
@@ -80,9 +80,9 @@ function connectWaveform() {
             waveX.copyWithin(0, len);
             waveY.copyWithin(0, len);
             waveZ.copyWithin(0, len);
-            
+
             const startIdx = waveX.length - len;
-            for(let i=0; i<len; i++) {
+            for (let i = 0; i < len; i++) {
                 waveX[startIdx + i] = data.y[i][0];
                 waveY[startIdx + i] = data.y[i][1];
                 waveZ[startIdx + i] = data.y[i][2];
@@ -100,13 +100,13 @@ function connectSpectro() {
         if (data.mags) {
             maxFreqBins = data.mags.length;
             const newRow = new Float32Array(data.mags);
-            
+
             // Waterfall down: Add new to top, remove from bottom
             specHistory.unshift(newRow);
             if (specHistory.length > SPEC_ROWS) {
                 specHistory.pop();
             }
-            
+
             // Record when we received this frame
             lastSpectroTime = performance.now();
         }
@@ -125,7 +125,7 @@ async function loadLanguage() {
 
         const response = await fetch(`/static/${lang}.json`);
         i18nDict = await response.json();
-        
+
         // Update DOM elements that possess the data-i18n tag
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
@@ -133,7 +133,7 @@ async function loadLanguage() {
                 el.innerHTML = i18nDict[key];
             }
         });
-        
+
         // Ensure dynamic status element also gets updated if it is currently rendered
         updateStatus();
     } catch (e) {
@@ -163,7 +163,7 @@ function drawWaveform() {
     // Assuming all 3 have the same dimensions due to flex layout
     const width = canvasZ.width;
     const height = canvasZ.height;
-    
+
     // Clear Backgrounds
     ctxZ.fillStyle = '#000000';
     ctxZ.fillRect(0, 0, width, height);
@@ -187,21 +187,21 @@ function drawWaveform() {
             const x = (i / (len - 1)) * width;
             const normalized = (buffer[i] / currentScale + 1) / 2;
             const y = height - (normalized * height);
-            
+
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
         ctx.stroke();
     }
-    
+
     // Draw Z (Blue), N mapped to Y (Green), E mapped to X (Red)
     drawAxis(ctxZ, waveZ, '#3b82f6'); // Z
     drawAxis(ctxN, waveY, '#10b981'); // N (Y-axis of sensor)
     drawAxis(ctxE, waveX, '#ef4444'); // E (X-axis of sensor)
-    
+
     // Draw the Spectrogram in lockstep with the Waveforms
     drawSpectrogram();
-    
+
     // Request next frame for that buttery 60fps Blit mode effect
     requestAnimationFrame(drawWaveform);
 }
@@ -209,51 +209,52 @@ function drawWaveform() {
 // --- Render Loop (Spectrogram) ---
 function drawSpectrogram() {
     if (specHistory.length === 0) return;
-    
+
     const width = spectroCanvas.width;
     const height = spectroCanvas.height;
     const colWidth = width / SPEC_ROWS; // Time mapped to Width
     const rowHeight = height / maxFreqBins; // Frequency mapped to Height
-    
+
     ctxSpec.fillStyle = '#000000';
     ctxSpec.fillRect(0, 0, width, height);
-    
+
     // Find absolute max across history to normalize colors
-    let globalMax = 0.0001; 
-    for(let r=0; r<specHistory.length; r++) {
-        for(let c=0; c<maxFreqBins; c++) {
+    let globalMax = 0.0001;
+    for (let r = 0; r < specHistory.length; r++) {
+        for (let c = 0; c < maxFreqBins; c++) {
             if (specHistory[r][c] > globalMax) globalMax = specHistory[r][c];
         }
     }
-    
-    // Calculate the sub-second offset to continuously push the blocks leftwards
-    const elapsedSeconds = Math.min((performance.now() - lastSpectroTime) / 1000.0, 1.0);
+
+    // Calculate the sub-second offset to continuously push the blocks leftwards.
+    // Floating without clamping allows it to remain perfectly aligned through slight micro-drifts.
+    const elapsedSeconds = (performance.now() - lastSpectroTime) / 1000.0;
     const pixelOffsetLeft = elapsedSeconds * colWidth;
-    
+
     // Draw columns (Time). Index 0 is newest. Let's draw newest on the far right.
     const limit = Math.min(SPEC_ROWS, specHistory.length);
     for (let t = 0; t < limit; t++) {
         const timeData = specHistory[t];
         const xPos = (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
-        
+
         for (let f = 0; f < maxFreqBins; f++) {
             // Normalize value 0 to 1, apply gain multiplier
             let mag = (timeData[f] / globalMax) * specGain;
             if (mag > 1) mag = 1;
             if (mag < 0) mag = 0;
-            
+
             // Optional log scale: compress dynamic range to reveal weak signals
             if (useLogScale) {
                 mag = Math.log10(1 + mag * 9);
             }
-            
+
             // Rainbow LUT lookup (0–255)
             const lutIdx = Math.min(255, Math.floor(mag * 255));
             ctxSpec.fillStyle = RAINBOW_LUT[lutIdx];
-            
+
             // Frequencies map to Height. Lowest freq (f=0) at the very bottom.
             const yPos = height - ((f + 1) * rowHeight);
-            
+
             // Render block, adding 1 to width to eliminate sub-pixel tearing gaps
             ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
         }
@@ -300,7 +301,7 @@ function updateAxisClocks() {
     const past = new Date(now.getTime() - 60000);
 
     const pad = (n) => n.toString().padStart(2, '0');
-    
+
     // Format: HH:MM:SS
     const timeRightStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const timeLeftStr = `${pad(past.getHours())}:${pad(past.getMinutes())}:${pad(past.getSeconds())}`;
