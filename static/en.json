@@ -15,5 +15,6 @@
   "axis_e": "E",
   "panel_spec": "FFT Spectrogram (1s Overlap)",
   "gain_label": "GAIN",
-  "wave_scale_label": "WAVE SCALE"
+  "wave_scale_label": "WAVE SCALE",
+  "freq_range_label": "FREQ RANGE"
 }

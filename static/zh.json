@@ -15,5 +15,6 @@
   "axis_e": "E",
   "panel_spec": "時頻圖/頻譜 (1s Overlap)",
   "gain_label": "增益",
-  "wave_scale_label": "波形尺度"
+  "wave_scale_label": "波形尺度",
+  "freq_range_label": "頻率範圍"
 }

@@ -33,6 +33,8 @@ let lastSpectroTime = performance.now(); // Track when the last Spectrogram fram
 // --- Spectrogram Controls ---
 let specGain = 1.0;
 let useLogScale = false;
+let specMinFreq = 0.5;
+let specMaxFreq = 50.0;
 
 // Pre-compute a 256-entry rainbow LUT at startup
 // Gradient: dark purple (silence) → blue → cyan → green → yellow → orange → red (max)
@@ -210,8 +212,17 @@ function drawSpectrogram() {
 
     const width = spectroCanvas.width;
     const height = spectroCanvas.height;
+
+    // Filter bins based on frequency range
+    // Resolution is 0.5Hz, starting at 0.5Hz
+    const startBin = Math.max(0, Math.floor((specMinFreq - 0.5) / 0.5));
+    const endBin = Math.min(maxFreqBins - 1, Math.floor((specMaxFreq - 0.5) / 0.5));
+    const visibleBins = endBin - startBin + 1;
+
+    if (visibleBins <= 0) return;
+
     const colWidth = width / SPEC_ROWS; // Time mapped to Width
-    const rowHeight = height / maxFreqBins; // Frequency mapped to Height
+    const rowHeight = height / visibleBins; // Frequency mapped to Height
 
     ctxSpec.fillStyle = '#000000';
     ctxSpec.fillRect(0, 0, width, height);
@@ -235,9 +246,10 @@ function drawSpectrogram() {
         const timeData = specHistory[t];
         const xPos = (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
 
-        for (let f = 0; f < maxFreqBins; f++) {
+        for (let i = 0; i < visibleBins; i++) {
+            const fIdx = startBin + i;
             // Normalize value 0 to 1, apply gain multiplier
-            let mag = (timeData[f] / globalMax) * specGain;
+            let mag = (timeData[fIdx] / globalMax) * specGain;
             if (mag > 1) mag = 1;
             if (mag < 0) mag = 0;
 
@@ -250,8 +262,8 @@ function drawSpectrogram() {
             const lutIdx = Math.min(255, Math.floor(mag * 255));
             ctxSpec.fillStyle = RAINBOW_LUT[lutIdx];
 
-            // Frequencies map to Height. Lowest freq (f=0) at the very bottom.
-            const yPos = height - ((f + 1) * rowHeight);
+            // Frequencies map to Height. Lowest visible freq at the very bottom.
+            const yPos = height - ((i + 1) * rowHeight);
 
             // Render block, adding 1 to width to eliminate sub-pixel tearing gaps
             ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
@@ -324,6 +336,42 @@ sliderE.addEventListener('input', () => {
     valE.textContent = s;
     rEt.textContent = '+' + s + 'g';
     rEb.textContent = '-' + s + 'g';
+});
+
+// --- Spectrogram Frequency Range Controls ---
+const sliderFreqMin = document.getElementById('freqMin');
+const sliderFreqMax = document.getElementById('freqMax');
+const valFreqMin = document.getElementById('valFreqMin');
+const valFreqMax = document.getElementById('valFreqMax');
+const labelFreqMin = document.getElementById('labelFreqMin');
+const labelFreqMax = document.getElementById('labelFreqMax');
+
+sliderFreqMin.addEventListener('input', () => {
+    let min = parseFloat(sliderFreqMin.value);
+    let max = parseFloat(sliderFreqMax.value);
+    
+    if (min >= max) {
+        min = max - 0.5;
+        sliderFreqMin.value = min;
+    }
+    
+    specMinFreq = min;
+    valFreqMin.textContent = min.toFixed(1);
+    labelFreqMin.textContent = min.toFixed(1) + ' Hz';
+});
+
+sliderFreqMax.addEventListener('input', () => {
+    let min = parseFloat(sliderFreqMin.value);
+    let max = parseFloat(sliderFreqMax.value);
+    
+    if (max <= min) {
+        max = min + 0.5;
+        sliderFreqMax.value = max;
+    }
+    
+    specMaxFreq = max;
+    valFreqMax.textContent = max.toFixed(1);
+    labelFreqMax.textContent = max.toFixed(1) + ' Hz';
 });
 
 // --- Dynamic Datetime Clock ---
