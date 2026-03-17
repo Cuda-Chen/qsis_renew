@@ -217,6 +217,22 @@
             text-shadow: 0 0 4px rgba(0,0,0,0.5);
         }
 
+        .hover-tooltip {
+            position: fixed;
+            background: rgba(15, 23, 42, 0.9);
+            color: #f8fafc;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            white-space: nowrap;
+        }
+
         .clip-zone {
             position: absolute;
             left: 0;
@@ -449,6 +465,7 @@
         </div>
     </div>
 
+    <div id="hoverTooltip" class="hover-tooltip"></div>
     <script src="/static/app.js"></script>
 </body>
 </html>

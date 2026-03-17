@@ -374,6 +374,46 @@ sliderFreqMax.addEventListener('input', () => {
     labelFreqMax.textContent = max.toFixed(1) + ' Hz';
 });
 
+// --- Waveform Hover Tooltip ---
+const tooltip = document.getElementById('hoverTooltip');
+
+// Since scales can change, we need the logic to use the current scale variables
+// instead of a captured value. 
+canvasZ.addEventListener('mousemove', (e) => updateTooltip(e, canvasZ, scaleZ, waveZ));
+canvasN.addEventListener('mousemove', (e) => updateTooltip(e, canvasN, scaleN, waveY));
+canvasE.addEventListener('mousemove', (e) => updateTooltip(e, canvasE, scaleE, waveX));
+
+const hideTooltip = () => { tooltip.style.display = 'none'; };
+canvasZ.addEventListener('mouseleave', hideTooltip);
+canvasN.addEventListener('mouseleave', hideTooltip);
+canvasE.addEventListener('mouseleave', hideTooltip);
+
+function updateTooltip(e, canvas, currentScale, dataArray) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const h = rect.height; // Use rect.height for CSS pixels scaling
+    const w = rect.width;
+    
+    // 1. Cursor Amplitude (Vertical mapping)
+    const normalized = 1.0 - (mouseY / h) * 2;
+    const amplitude = normalized * currentScale;
+
+    // 2. Actual Sample Value (Horizontal mapping)
+    let sampleValue = 0;
+    if (dataArray && dataArray.length > 0) {
+        const idx = Math.floor((mouseX / w) * (dataArray.length - 1));
+        // Ensure index is within bounds
+        const safeIdx = Math.max(0, Math.min(dataArray.length - 1, idx));
+        sampleValue = dataArray[safeIdx];
+    }
+    
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 15) + 'px';
+    tooltip.style.top = (e.clientY + 10) + 'px';
+    tooltip.innerHTML = `<span style="color: var(--accent-green); font-weight:bold;">${sampleValue.toFixed(4)} g</span>`;
+}
+
 // --- Dynamic Datetime Clock ---
 function updateAxisClocks() {
     const now = new Date();
