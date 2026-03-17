@@ -2,6 +2,53 @@
 
 A high-performance HTML5 Canvas and FastAPI dashboard for processing and streaming 100Hz 3-Axis Phidget Accelerometer data with zero-latency DSP filtering and a real-time FFT Spectrogram.
 
+## System Architecture
+
+```text
++---------------------+
+| Hardware Layer      |
+| (Phidget 3-Axis     |
+|  Accelerometer)     |
++----------+----------+
+           | (100Hz Raw Data)
+           v
++---------------------+
+| Backend Layer       |
+| (Python / FastAPI)  |
+|                     |
+|  [ Ingestion Loop ] <--- [ NTP Sync (System Clock) ]
+|          |          |
+|  [ DSP Processor  ] <--- (Butterworth Bandpass + EMA Demean)
+|          |          |
+|  [ Ring Buffer    ] <--- (Rolling 60s Window)
+|    /     |     \    |
+|   v      v      v   |
+| [WS] [Archive] [FFT]|
++--+-------+------+---+
+   |       |      |
+   |       |      +--------------------------------+
+   |       v (Stream to Disk)                      |
+   |    +----------------------+                   |
+   |    | Storage / Export     |                   |
+   |    | (MiniSEED Format)    |                   |
+   |    +----------------------+                   |
+   |                                               |
+   v (WebSockets: Waveform & Spectrogram)          v
++------------------------------------------------------+
+| Frontend Layer (JS / HTML5 Canvas)                   |
+|                                                      |
+| [Waveform Display]  [Spectrogram Heatmap]            |
+| [i18n / UI Controls / Gain / Scale ]                 |
++------------------------------------------------------+
+```
+
+### Component Overview
+- **Hardware**: Captures 3-axis acceleration at 100Hz.
+- **DSP Processor**: Real-time signal conditioning using infinite impulse response (IIR) filtering and baseline removal.
+- **Ring Buffer**: Thread-safe memory structure for historical data access and low-latency streaming.
+- **Archiver**: Continuous MiniSEED generation with daily rotation and automated retention policy.
+- **Frontend**: Smooth 60fps rendering using the HTML5 Canvas API, supporting logarithmic spectrograms and gain control.
+
 ## 1. Install Dependencies
 
 You must have [uv](https://github.com/astral-sh/uv) installed, then run the project synchronizer:
