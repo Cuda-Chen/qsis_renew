@@ -19,7 +19,9 @@ const WEBSOCKET_URL = `ws://${window.location.host}`;
 let waveX = new Float32Array(FS * SECONDS_TO_SHOW);
 let waveY = new Float32Array(FS * SECONDS_TO_SHOW);
 let waveZ = new Float32Array(FS * SECONDS_TO_SHOW);
-let currentScale = 3.0;
+let scaleZ = 2.0;
+let scaleN = 2.0;
+let scaleE = 2.0;
 
 // --- Spectrogram State ---
 // Let's store 60 rows, giving us 60 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
@@ -172,12 +174,8 @@ function drawWaveform() {
     ctxE.fillStyle = '#000000';
     ctxE.fillRect(0, 0, width, height);
 
-    // Match Y-axis to the Phidget sensor's physical ±2.0G range.
-    // Clipped signals will visually flatline at the canvas edge.
-    currentScale = 2.0;
-
     // Helper to draw a single axis line
-    function drawAxis(ctx, buffer, color) {
+    function drawAxis(ctx, buffer, color, scale) {
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         ctx.lineJoin = 'round';
@@ -185,7 +183,7 @@ function drawWaveform() {
         const len = buffer.length;
         for (let i = 0; i < len; i++) {
             const x = (i / (len - 1)) * width;
-            const normalized = (buffer[i] / currentScale + 1) / 2;
+            const normalized = (buffer[i] / scale + 1) / 2;
             const y = height - (normalized * height);
 
             if (i === 0) ctx.moveTo(x, y);
@@ -195,9 +193,9 @@ function drawWaveform() {
     }
 
     // Draw Z (Blue), N mapped to Y (Green), E mapped to X (Red)
-    drawAxis(ctxZ, waveZ, '#3b82f6'); // Z
-    drawAxis(ctxN, waveY, '#10b981'); // N (Y-axis of sensor)
-    drawAxis(ctxE, waveX, '#ef4444'); // E (X-axis of sensor)
+    drawAxis(ctxZ, waveZ, '#3b82f6', scaleZ); // Z
+    drawAxis(ctxN, waveY, '#10b981', scaleN); // N (Y-axis of sensor)
+    drawAxis(ctxE, waveX, '#ef4444', scaleE); // E (X-axis of sensor)
 
     // Draw the Spectrogram in lockstep with the Waveforms
     drawSpectrogram();
@@ -292,6 +290,27 @@ btnLog.addEventListener('click', () => {
     useLogScale = true;
     btnLog.classList.add('active');
     btnLin.classList.remove('active');
+});
+ 
+// --- Waveform Scale Controls ---
+const sliderZ = document.getElementById('scaleZ');
+const sliderN = document.getElementById('scaleN');
+const sliderE = document.getElementById('scaleE');
+const valZ = document.getElementById('valScaleZ');
+const valN = document.getElementById('valScaleN');
+const valE = document.getElementById('valScaleE');
+ 
+sliderZ.addEventListener('input', () => {
+    scaleZ = parseFloat(sliderZ.value);
+    valZ.textContent = scaleZ.toFixed(1);
+});
+sliderN.addEventListener('input', () => {
+    scaleN = parseFloat(sliderN.value);
+    valN.textContent = scaleN.toFixed(1);
+});
+sliderE.addEventListener('input', () => {
+    scaleE = parseFloat(sliderE.value);
+    valE.textContent = scaleE.toFixed(1);
 });
 
 // --- Dynamic Datetime Clock ---

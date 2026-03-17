@@ -335,6 +335,23 @@
             <input type="range" id="gainSlider" min="0.1" max="10" step="0.1" value="1.0">
             <span id="gainValue" class="sidebar-value">1.0x</span>
         </div>
+        <div class="sidebar-control">
+            <label class="sidebar-label" data-i18n="wave_scale_label">WAVE SCALE</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span class="sidebar-value" style="color: #3b82f6;">Z: <span id="valScaleZ">2.0</span>g</span>
+                    <input type="range" id="scaleZ" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #3b82f6; width: 80%;">
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span class="sidebar-value" style="color: #10b981;">N: <span id="valScaleN">2.0</span>g</span>
+                    <input type="range" id="scaleN" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #10b981; width: 80%;">
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <span class="sidebar-value" style="color: #ef4444;">E: <span id="valScaleE">2.0</span>g</span>
+                    <input type="range" id="scaleE" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #ef4444; width: 80%;">
+                </div>
+            </div>
+        </div>
     </div>
     
     <div class="main-content">

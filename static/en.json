@@ -14,6 +14,6 @@
   "panel_e": "Channel E Analytics",
   "axis_e": "E",
   "panel_spec": "FFT Spectrogram (1s Overlap)",
-  "scale_label": "SCALE",
-  "gain_label": "GAIN"
+  "gain_label": "GAIN",
+  "wave_scale_label": "WAVE SCALE"
 }

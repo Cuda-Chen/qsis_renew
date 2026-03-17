@@ -14,6 +14,6 @@
   "panel_e": "波形串流 E",
   "axis_e": "E",
   "panel_spec": "時頻圖/頻譜 (1s Overlap)",
-  "scale_label": "尺度",
-  "gain_label": "增益"
+  "gain_label": "增益",
+  "wave_scale_label": "波形尺度"
 }
