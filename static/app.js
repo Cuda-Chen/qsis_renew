@@ -299,18 +299,31 @@ const sliderE = document.getElementById('scaleE');
 const valZ = document.getElementById('valScaleZ');
 const valN = document.getElementById('valScaleN');
 const valE = document.getElementById('valScaleE');
- 
+
+const rZt = document.getElementById('rangeZTop'), rZb = document.getElementById('rangeZBottom');
+const rNt = document.getElementById('rangeNTop'), rNb = document.getElementById('rangeNBottom');
+const rEt = document.getElementById('rangeETop'), rEb = document.getElementById('rangeEBottom');
+
 sliderZ.addEventListener('input', () => {
     scaleZ = parseFloat(sliderZ.value);
-    valZ.textContent = scaleZ.toFixed(1);
+    const s = scaleZ.toFixed(1);
+    valZ.textContent = s;
+    rZt.textContent = '+' + s + 'g';
+    rZb.textContent = '-' + s + 'g';
 });
 sliderN.addEventListener('input', () => {
     scaleN = parseFloat(sliderN.value);
-    valN.textContent = scaleN.toFixed(1);
+    const s = scaleN.toFixed(1);
+    valN.textContent = s;
+    rNt.textContent = '+' + s + 'g';
+    rNb.textContent = '-' + s + 'g';
 });
 sliderE.addEventListener('input', () => {
     scaleE = parseFloat(sliderE.value);
-    valE.textContent = scaleE.toFixed(1);
+    const s = scaleE.toFixed(1);
+    valE.textContent = s;
+    rEt.textContent = '+' + s + 'g';
+    rEb.textContent = '-' + s + 'g';
 });
 
 // --- Dynamic Datetime Clock ---

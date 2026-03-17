@@ -206,6 +206,17 @@
             pointer-events: none;
         }
 
+        .range-label {
+            position: absolute;
+            right: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: rgba(148, 163, 184, 0.6);
+            pointer-events: none;
+            z-index: 15;
+            text-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+
         .clip-zone {
             position: absolute;
             left: 0;
@@ -374,6 +385,8 @@
                     <div class="clip-zone top"></div>
                     <div class="clip-zone bottom"></div>
                     <div class="axis-label" style="top: 5px; left: 10px; color: #3b82f6; font-weight: 700;" data-i18n="axis_z">Z</div>
+                    <div class="range-label" style="top: 4px;" id="rangeZTop">+2.0g</div>
+                    <div class="range-label" style="bottom: 4px;" id="rangeZBottom">-2.0g</div>
                     <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
                 </div>
                 <!-- N Component -->
@@ -384,6 +397,8 @@
                     <div class="clip-zone top"></div>
                     <div class="clip-zone bottom"></div>
                     <div class="axis-label" style="top: 5px; left: 10px; color: #10b981; font-weight: 700;" data-i18n="axis_n">N</div>
+                    <div class="range-label" style="top: 4px;" id="rangeNTop">+2.0g</div>
+                    <div class="range-label" style="bottom: 4px;" id="rangeNBottom">-2.0g</div>
                 </div>
                 <!-- E Component -->
                 <div class="waveform-container" style="flex: 1;">
@@ -393,6 +408,8 @@
                     <div class="clip-zone top"></div>
                     <div class="clip-zone bottom"></div>
                     <div class="axis-label" style="top: 5px; left: 10px; color: #ef4444; font-weight: 700;" data-i18n="axis_e">E</div>
+                    <div class="range-label" style="top: 4px;" id="rangeETop">+2.0g</div>
+                    <div class="range-label" style="bottom: 4px;" id="rangeEBottom">-2.0g</div>
                     <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
                 </div>
             </div>
