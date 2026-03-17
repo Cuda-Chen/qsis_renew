@@ -395,11 +395,7 @@ function updateTooltip(e, canvas, currentScale, dataArray) {
     const h = rect.height; // Use rect.height for CSS pixels scaling
     const w = rect.width;
     
-    // 1. Cursor Amplitude (Vertical mapping)
-    const normalized = 1.0 - (mouseY / h) * 2;
-    const amplitude = normalized * currentScale;
-
-    // 2. Actual Sample Value (Horizontal mapping)
+    // 1. Actual Sample Value (Horizontal mapping)
     let sampleValue = 0;
     if (dataArray && dataArray.length > 0) {
         const idx = Math.floor((mouseX / w) * (dataArray.length - 1));
@@ -409,9 +405,28 @@ function updateTooltip(e, canvas, currentScale, dataArray) {
     }
     
     tooltip.style.display = 'block';
-    tooltip.style.left = (e.clientX + 15) + 'px';
-    tooltip.style.top = (e.clientY + 10) + 'px';
     tooltip.innerHTML = `<span style="color: var(--accent-green); font-weight:bold;">${sampleValue.toFixed(4)} g</span>`;
+
+    // Collision Detection
+    const offset = 15;
+    const tooltipWidth = tooltip.offsetWidth;
+    const tooltipHeight = tooltip.offsetHeight;
+    
+    let left = e.clientX + offset;
+    let top = e.clientY + 10;
+
+    // Flip horizontally if overflow right
+    if (left + tooltipWidth > window.innerWidth) {
+        left = e.clientX - offset - tooltipWidth;
+    }
+
+    // Flip vertically if overflow bottom
+    if (top + tooltipHeight > window.innerHeight) {
+        top = e.clientY - 10 - tooltipHeight;
+    }
+
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
 }
 
 // --- Dynamic Datetime Clock ---
