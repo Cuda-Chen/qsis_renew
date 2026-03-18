@@ -279,13 +279,16 @@ function drawSpectrogram() {
     ctxSpec.textAlign = 'left';
     ctxSpec.textBaseline = 'middle';
 
+    const delta = specMaxFreq - specMinFreq;
+    let interval = 5;
+    if (delta <= 10) interval = 1;
+    else if (delta <= 20) interval = 2;
+
     const ticks = [];
-    // 0~10Hz: 1Hz interval
-    for (let f = 0; f <= 10; f += 1) if (f >= specMinFreq && f <= specMaxFreq) ticks.push(f);
-    // 10~20Hz: 2Hz interval 
-    for (let f = 12; f <= 20; f += 2) if (f >= specMinFreq && f <= specMaxFreq) ticks.push(f);
-    // 20Hz~: 5Hz interval
-    for (let f = 25; f <= 100; f += 5) if (f >= specMinFreq && f <= specMaxFreq) ticks.push(f);
+    let startTick = Math.ceil(specMinFreq / interval) * interval;
+    for (let f = startTick; f <= specMaxFreq; f += interval) {
+        ticks.push(f);
+    }
 
     ticks.forEach(f => {
         const percent = (f - specMinFreq) / (specMaxFreq - specMinFreq);
