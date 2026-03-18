@@ -269,6 +269,37 @@ function drawSpectrogram() {
             ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
         }
     }
+
+    // --- Draw Frequency Ticks ---
+    ctxSpec.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctxSpec.font = '10px Courier New';
+    ctxSpec.textAlign = 'left';
+    ctxSpec.textBaseline = 'middle';
+
+    const tickStep = (specMaxFreq - specMinFreq) > 20 ? 10 : 5;
+    const startTick = Math.ceil(specMinFreq / tickStep) * tickStep;
+
+    for (let f = startTick; f <= specMaxFreq; f += tickStep) {
+        // Calculate y position
+        // Frequency maps to Height. Lowest visible freq at the very bottom.
+        const percent = (f - specMinFreq) / (specMaxFreq - specMinFreq);
+        const yPos = height - (percent * height);
+
+        // Adjust baseline for boundary labels to prevent cut-off
+        if (yPos < 10) ctxSpec.textBaseline = 'top';
+        else if (yPos > height - 10) ctxSpec.textBaseline = 'bottom';
+        else ctxSpec.textBaseline = 'middle';
+
+        // Draw tick line
+        ctxSpec.beginPath();
+        ctxSpec.moveTo(0, yPos);
+        ctxSpec.lineTo(10, yPos);
+        ctxSpec.stroke();
+
+        // Draw label
+        ctxSpec.fillText(`${f}Hz`, 12, yPos);
+    }
 }
 
 // Start everything
@@ -343,8 +374,6 @@ const sliderFreqMin = document.getElementById('freqMin');
 const sliderFreqMax = document.getElementById('freqMax');
 const valFreqMin = document.getElementById('valFreqMin');
 const valFreqMax = document.getElementById('valFreqMax');
-const labelFreqMin = document.getElementById('labelFreqMin');
-const labelFreqMax = document.getElementById('labelFreqMax');
 
 sliderFreqMin.addEventListener('input', () => {
     let min = parseFloat(sliderFreqMin.value);
@@ -357,7 +386,6 @@ sliderFreqMin.addEventListener('input', () => {
     
     specMinFreq = min;
     valFreqMin.textContent = min.toFixed(1);
-    labelFreqMin.textContent = min.toFixed(1) + ' Hz';
 });
 
 sliderFreqMax.addEventListener('input', () => {
@@ -371,7 +399,6 @@ sliderFreqMax.addEventListener('input', () => {
     
     specMaxFreq = max;
     valFreqMax.textContent = max.toFixed(1);
-    labelFreqMax.textContent = max.toFixed(1) + ' Hz';
 });
 
 // --- Waveform Hover Tooltip ---
