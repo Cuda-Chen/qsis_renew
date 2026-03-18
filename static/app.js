@@ -14,6 +14,7 @@ let wsWaveform, wsSpectro;
 const FS = 100; // 100Hz
 const SECONDS_TO_SHOW = 60;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
+const Y_AXIS_WIDTH = 50;
 
 // --- Waveform State ---
 let waveX = new Float32Array(FS * SECONDS_TO_SHOW);
@@ -221,7 +222,7 @@ function drawSpectrogram() {
 
     if (visibleBins <= 0) return;
 
-    const colWidth = width / SPEC_ROWS; // Time mapped to Width
+    const colWidth = (width - Y_AXIS_WIDTH) / SPEC_ROWS; // Time mapped to Width
     const rowHeight = height / visibleBins; // Frequency mapped to Height
 
     ctxSpec.fillStyle = '#000000';
@@ -244,7 +245,7 @@ function drawSpectrogram() {
     const limit = Math.min(SPEC_ROWS, specHistory.length);
     for (let t = 0; t < limit; t++) {
         const timeData = specHistory[t];
-        const xPos = (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
+        const xPos = Y_AXIS_WIDTH + (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
 
         for (let i = 0; i < visibleBins; i++) {
             const fIdx = startBin + i;
@@ -266,40 +267,52 @@ function drawSpectrogram() {
             const yPos = height - ((i + 1) * rowHeight);
 
             // Render block, adding 1 to width to eliminate sub-pixel tearing gaps
-            ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
+            if (xPos >= Y_AXIS_WIDTH) {
+                ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
+            }
         }
     }
-
-    // --- Draw Frequency Ticks ---
+    
+    // --- Draw Frequency Ticks & Gridlines ---
     ctxSpec.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctxSpec.font = '10px Courier New';
     ctxSpec.textAlign = 'left';
     ctxSpec.textBaseline = 'middle';
 
-    const tickStep = (specMaxFreq - specMinFreq) > 20 ? 10 : 5;
-    const startTick = Math.ceil(specMinFreq / tickStep) * tickStep;
+    const ticks = [];
+    // 0~10Hz: 1Hz interval
+    for (let f = 0; f <= 10; f += 1) if (f >= specMinFreq && f <= specMaxFreq) ticks.push(f);
+    // 10~20Hz: 2Hz interval 
+    for (let f = 12; f <= 20; f += 2) if (f >= specMinFreq && f <= specMaxFreq) ticks.push(f);
+    // 20Hz~: 5Hz interval
+    for (let f = 25; f <= 100; f += 5) if (f >= specMinFreq && f <= specMaxFreq) ticks.push(f);
 
-    for (let f = startTick; f <= specMaxFreq; f += tickStep) {
-        // Calculate y position
-        // Frequency maps to Height. Lowest visible freq at the very bottom.
+    ticks.forEach(f => {
         const percent = (f - specMinFreq) / (specMaxFreq - specMinFreq);
         const yPos = height - (percent * height);
 
-        // Adjust baseline for boundary labels to prevent cut-off
+        // Gridline (subtle)
+        ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctxSpec.lineWidth = 1;
+        ctxSpec.beginPath();
+        ctxSpec.moveTo(Y_AXIS_WIDTH, yPos);
+        ctxSpec.lineTo(width, yPos);
+        ctxSpec.stroke();
+
+        // Tick Mark
+        ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctxSpec.beginPath();
+        ctxSpec.moveTo(Y_AXIS_WIDTH - 5, yPos);
+        ctxSpec.lineTo(Y_AXIS_WIDTH, yPos);
+        ctxSpec.stroke();
+
+        // Label
         if (yPos < 10) ctxSpec.textBaseline = 'top';
         else if (yPos > height - 10) ctxSpec.textBaseline = 'bottom';
         else ctxSpec.textBaseline = 'middle';
-
-        // Draw tick line
-        ctxSpec.beginPath();
-        ctxSpec.moveTo(0, yPos);
-        ctxSpec.lineTo(10, yPos);
-        ctxSpec.stroke();
-
-        // Draw label
-        ctxSpec.fillText(`${f}Hz`, 12, yPos);
-    }
+        
+        ctxSpec.fillText(`${f}Hz`, 5, yPos);
+    });
 }
 
 // Start everything
@@ -414,19 +427,16 @@ const hideTooltip = () => { tooltip.style.display = 'none'; };
 canvasZ.addEventListener('mouseleave', hideTooltip);
 canvasN.addEventListener('mouseleave', hideTooltip);
 canvasE.addEventListener('mouseleave', hideTooltip);
+spectroCanvas.addEventListener('mouseleave', hideTooltip);
 
 function updateTooltip(e, canvas, currentScale, dataArray) {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const h = rect.height; // Use rect.height for CSS pixels scaling
     const w = rect.width;
     
-    // 1. Actual Sample Value (Horizontal mapping)
     let sampleValue = 0;
     if (dataArray && dataArray.length > 0) {
         const idx = Math.floor((mouseX / w) * (dataArray.length - 1));
-        // Ensure index is within bounds
         const safeIdx = Math.max(0, Math.min(dataArray.length - 1, idx));
         sampleValue = dataArray[safeIdx];
     }
@@ -434,7 +444,10 @@ function updateTooltip(e, canvas, currentScale, dataArray) {
     tooltip.style.display = 'block';
     tooltip.innerHTML = `<span style="color: var(--accent-green); font-weight:bold;">${sampleValue.toFixed(4)} g</span>`;
 
-    // Collision Detection
+    positionTooltip(e);
+}
+
+function positionTooltip(e) {
     const offset = 15;
     const tooltipWidth = tooltip.offsetWidth;
     const tooltipHeight = tooltip.offsetHeight;
@@ -442,12 +455,10 @@ function updateTooltip(e, canvas, currentScale, dataArray) {
     let left = e.clientX + offset;
     let top = e.clientY + 10;
 
-    // Flip horizontally if overflow right
     if (left + tooltipWidth > window.innerWidth) {
         left = e.clientX - offset - tooltipWidth;
     }
 
-    // Flip vertically if overflow bottom
     if (top + tooltipHeight > window.innerHeight) {
         top = e.clientY - 10 - tooltipHeight;
     }
