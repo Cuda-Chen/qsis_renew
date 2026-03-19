@@ -20,6 +20,7 @@ const Y_AXIS_WIDTH = 50;
 let waveX = new Float32Array(FS * SECONDS_TO_SHOW);
 let waveY = new Float32Array(FS * SECONDS_TO_SHOW);
 let waveZ = new Float32Array(FS * SECONDS_TO_SHOW);
+let waveT = new Float64Array(FS * SECONDS_TO_SHOW); // epoch (Unix seconds) per sample
 let scaleZ = 2.0;
 let scaleN = 2.0;
 let scaleE = 2.0;
@@ -27,9 +28,8 @@ let scaleE = 2.0;
 // --- Spectrogram State ---
 // Let's store 60 rows, giving us 60 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
 const SPEC_ROWS = 60;
-let specHistory = []; // array of Float32Arrays
-let maxFreqBins = 0; // Will be set when first payload arrives
-let lastSpectroTime = performance.now(); // Track when the last Spectrogram frame arrived
+let specHistory = []; // array of {mags: Float32Array, epoch: number} objects
+let maxFreqBins = 0;
 
 // --- Spectrogram Controls ---
 let specGain = 1.0;
@@ -80,17 +80,22 @@ function connectWaveform() {
     wsWaveform = new WebSocket(`${WEBSOCKET_URL}/ws/waveform`);
     wsWaveform.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.y && data.y.length > 0) {
+        if (data.y && data.y.length > 0 && data.t != null) {
             const len = data.y.length;
             waveX.copyWithin(0, len);
             waveY.copyWithin(0, len);
             waveZ.copyWithin(0, len);
+            waveT.copyWithin(0, len);
 
             const startIdx = waveX.length - len;
+            const chunkEndEpoch = data.t; // epoch of the last sample in this chunk
+            const dt = 1.0 / FS;          // seconds between consecutive samples
             for (let i = 0; i < len; i++) {
                 waveX[startIdx + i] = data.y[i][0];
                 waveY[startIdx + i] = data.y[i][1];
                 waveZ[startIdx + i] = data.y[i][2];
+                // Reconstruct each sample's epoch from the chunk end time
+                waveT[startIdx + i] = chunkEndEpoch - (len - 1 - i) * dt;
             }
         }
     };
@@ -102,18 +107,13 @@ function connectSpectro() {
     wsSpectro = new WebSocket(`${WEBSOCKET_URL}/ws/spectrogram`);
     wsSpectro.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.mags) {
+        if (data.mags && data.epoch != null) {
             maxFreqBins = data.mags.length;
             const newRow = new Float32Array(data.mags);
-
-            // Waterfall down: Add new to top, remove from bottom
-            specHistory.unshift(newRow);
+            specHistory.unshift({ mags: newRow, epoch: data.epoch });
             if (specHistory.length > SPEC_ROWS) {
                 specHistory.pop();
             }
-
-            // Record when we received this frame
-            lastSpectroTime = performance.now();
         }
     };
 }
@@ -177,19 +177,26 @@ function drawWaveform() {
     ctxE.fillStyle = '#000000';
     ctxE.fillRect(0, 0, width, height);
 
-    // Helper to draw a single axis line
+    // Shared time-axis: x = width - age * pxPerSecond
+    // This is identical to how drawSpectrogram positions columns — guaranteeing alignment.
+    const pxPerSecond = width / SECONDS_TO_SHOW;
+    const nowSec = Date.now() / 1000.0;
+
     function drawAxis(ctx, buffer, color, scale) {
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
         ctx.lineJoin = 'round';
         ctx.beginPath();
         const len = buffer.length;
+        let started = false;
         for (let i = 0; i < len; i++) {
-            const x = (i / (len - 1)) * width;
+            const age = nowSec - waveT[i];
+            const x = width - age * pxPerSecond;
+            // Skip samples outside the visible window
+            if (x < 0 || x > width) continue;
             const normalized = (buffer[i] / scale + 1) / 2;
             const y = height - (normalized * height);
-
-            if (i === 0) ctx.moveTo(x, y);
+            if (!started) { ctx.moveTo(x, y); started = true; }
             else ctx.lineTo(x, y);
         }
         ctx.stroke();
@@ -222,57 +229,61 @@ function drawSpectrogram() {
 
     if (visibleBins <= 0) return;
 
-    const colWidth = (width - Y_AXIS_WIDTH) / SPEC_ROWS; // Time mapped to Width
-    const rowHeight = height / visibleBins; // Frequency mapped to Height
+    // Shared time-axis. Must use the SAME pxPerSecond as drawWaveform.
+    const plotWidth = width - Y_AXIS_WIDTH;
+    const pxPerSecond = width / SECONDS_TO_SHOW; // identical denominator to waveform
+    const rowHeight = height / visibleBins;
 
     ctxSpec.fillStyle = '#000000';
     ctxSpec.fillRect(0, 0, width, height);
 
-    // Find absolute max across history to normalize colors
+    // Find absolute max for color normalization
     let globalMax = 0.0001;
     for (let r = 0; r < specHistory.length; r++) {
+        const row = specHistory[r].mags;
         for (let c = 0; c < maxFreqBins; c++) {
-            if (specHistory[r][c] > globalMax) globalMax = specHistory[r][c];
+            if (row[c] > globalMax) globalMax = row[c];
         }
     }
 
-    // Calculate the sub-second offset to continuously push the blocks leftwards.
-    // Floating without clamping allows it to remain perfectly aligned through slight micro-drifts.
-    const elapsedSeconds = (performance.now() - lastSpectroTime) / 1000.0;
-    const pixelOffsetLeft = elapsedSeconds * colWidth;
-
-    // Draw columns (Time). Index 0 is newest. Let's draw newest on the far right.
     const limit = Math.min(SPEC_ROWS, specHistory.length);
+    const nowSec = Date.now() / 1000.0;
+
     for (let t = 0; t < limit; t++) {
-        const timeData = specHistory[t];
-        const xPos = Y_AXIS_WIDTH + (SPEC_ROWS - 2 - t) * colWidth - pixelOffsetLeft;
+        const { mags: timeData, epoch } = specHistory[t];
+        if (epoch == null) continue;
+
+        // x = width - age * pxPerSecond  (same formula as waveform)
+        const age = nowSec - epoch;
+        const xRight = width - age * pxPerSecond;
+        const xPos = xRight - pxPerSecond; // left edge of this 1-second column
+
+        // Skip columns fully outside the visible area
+        if (xRight <= Y_AXIS_WIDTH) continue;
+        if (xPos >= width) continue;
 
         for (let i = 0; i < visibleBins; i++) {
             const fIdx = startBin + i;
-            // Normalize value 0 to 1, apply gain multiplier
             let mag = (timeData[fIdx] / globalMax) * specGain;
             if (mag > 1) mag = 1;
             if (mag < 0) mag = 0;
 
-            // Optional log scale: compress dynamic range to reveal weak signals
             if (useLogScale) {
                 mag = Math.log10(1 + mag * 9);
             }
 
-            // Rainbow LUT lookup (0–255)
             const lutIdx = Math.min(255, Math.floor(mag * 255));
             ctxSpec.fillStyle = RAINBOW_LUT[lutIdx];
 
-            // Frequencies map to Height. Lowest visible freq at the very bottom.
             const yPos = height - ((i + 1) * rowHeight);
 
-            // Render block, adding 1 to width to eliminate sub-pixel tearing gaps
-            if (xPos >= Y_AXIS_WIDTH) {
-                ctxSpec.fillRect(Math.floor(xPos), Math.floor(yPos), Math.ceil(colWidth) + 1, Math.ceil(rowHeight));
+            const drawX = Math.floor(Math.max(xPos, Y_AXIS_WIDTH));
+            if (drawX < width) {
+                ctxSpec.fillRect(drawX, Math.floor(yPos), Math.ceil(pxPerSecond) + 1, Math.ceil(rowHeight));
             }
         }
     }
-    
+
     // --- Draw Frequency Ticks & Gridlines ---
     ctxSpec.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctxSpec.font = '10px Courier New';
@@ -313,7 +324,7 @@ function drawSpectrogram() {
         if (yPos < 10) ctxSpec.textBaseline = 'top';
         else if (yPos > height - 10) ctxSpec.textBaseline = 'bottom';
         else ctxSpec.textBaseline = 'middle';
-        
+
         ctxSpec.fillText(`${f}Hz`, 5, yPos);
     });
 }
@@ -350,7 +361,7 @@ btnLog.addEventListener('click', () => {
     btnLog.classList.add('active');
     btnLin.classList.remove('active');
 });
- 
+
 // --- Waveform Scale Controls ---
 const sliderZ = document.getElementById('scaleZ');
 const sliderN = document.getElementById('scaleN');
@@ -394,12 +405,12 @@ const valFreqMax = document.getElementById('valFreqMax');
 sliderFreqMin.addEventListener('input', () => {
     let min = parseFloat(sliderFreqMin.value);
     let max = parseFloat(sliderFreqMax.value);
-    
+
     if (min >= max) {
         min = max - 0.5;
         sliderFreqMin.value = min;
     }
-    
+
     specMinFreq = min;
     valFreqMin.textContent = min.toFixed(1);
 });
@@ -407,12 +418,12 @@ sliderFreqMin.addEventListener('input', () => {
 sliderFreqMax.addEventListener('input', () => {
     let min = parseFloat(sliderFreqMin.value);
     let max = parseFloat(sliderFreqMax.value);
-    
+
     if (max <= min) {
         max = min + 0.5;
         sliderFreqMax.value = max;
     }
-    
+
     specMaxFreq = max;
     valFreqMax.textContent = max.toFixed(1);
 });
@@ -436,14 +447,14 @@ function updateTooltip(e, canvas, currentScale, dataArray) {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const w = rect.width;
-    
+
     let sampleValue = 0;
     if (dataArray && dataArray.length > 0) {
         const idx = Math.floor((mouseX / w) * (dataArray.length - 1));
         const safeIdx = Math.max(0, Math.min(dataArray.length - 1, idx));
         sampleValue = dataArray[safeIdx];
     }
-    
+
     tooltip.style.display = 'block';
     tooltip.innerHTML = `<span style="color: var(--accent-green); font-weight:bold;">${sampleValue.toFixed(4)} g</span>`;
 
@@ -454,7 +465,7 @@ function positionTooltip(e) {
     const offset = 15;
     const tooltipWidth = tooltip.offsetWidth;
     const tooltipHeight = tooltip.offsetHeight;
-    
+
     let left = e.clientX + offset;
     let top = e.clientY + 10;
 

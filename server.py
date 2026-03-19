@@ -199,7 +199,8 @@ def math_loop():
             
             latest_spectrogram = {
                 "freqs": f_bins.tolist(),
-                "mags": mags.tolist()
+                "mags": mags.tolist(),
+                "epoch": time.time()
             }
 
 threading.Thread(target=math_loop, daemon=True).start()
@@ -406,7 +407,10 @@ async def ws_waveform(websocket: WebSocket):
                 last_head = current_head
                 
                 if len(chunk) > 0:
-                    await websocket.send_text(json.dumps({"y": chunk.tolist()}))
+                    # Epoch of the last sample in this chunk
+                    # delayed_end is delay_samples behind the head, so it's delay_samples/FS seconds old
+                    chunk_epoch = time.time() - (delay_samples / FS)
+                    await websocket.send_text(json.dumps({"y": chunk.tolist(), "t": chunk_epoch}))
                     
     except WebSocketDisconnect:
         waveform_connections.remove(websocket)
