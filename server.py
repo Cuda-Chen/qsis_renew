@@ -135,7 +135,6 @@ def hardware_loop():
     ch.setOnAccelerationChangeHandler(on_accel)
     
     try:
-        ch.setDeviceSerialNumber(372690)
         ch.setIsLocal(True)
         ch.openWaitForAttachment(5000)
         ch.setDataInterval(DATA_INTERVAL_MS)
