@@ -43,11 +43,12 @@ A high-performance HTML5 Canvas and FastAPI dashboard for processing and streami
 ```
 
 ### Component Overview
-- **Hardware**: Captures 3-axis acceleration at 100Hz.
+- **Hardware**: Captures 3-axis acceleration. Supports high-resolution sampling up to 125Hz (8ms interval).
 - **DSP Processor**: Real-time signal conditioning using infinite impulse response (IIR) filtering and baseline removal.
-- **Ring Buffer**: Thread-safe memory structure for historical data access and low-latency streaming.
+- **Ring Buffer**: Thread-safe memory structure sized for 12,000 samples to accommodate hardware rate drifts while maintaining a 60s history.
+- **True Sync Architecture**: Both Waveform and Spectrogram streams are aligned using absolute wall-clock (UTC Epoch) timestamps, ensuring zero drift and perfect vertical phase alignment.
 - **Archiver**: Continuous MiniSEED generation with daily rotation and automated retention policy.
-- **Frontend**: Smooth 60fps rendering using the HTML5 Canvas API, supporting logarithmic spectrograms and gain control.
+- **Frontend**: Smooth 60fps rendering using the HTML5 Canvas API with timestamp-based positioning, supporting logarithmic spectrograms and gain control.
 
 ## 1. Install Dependencies
 

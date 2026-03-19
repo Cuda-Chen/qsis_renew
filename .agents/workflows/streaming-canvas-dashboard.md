@@ -1,77 +1,35 @@
 ---
 description: Build Smooth Real-Time Streaming Dashboards (FastAPI + Canvas)
 ---
-# How to build a Smooth Real-Time Streaming Dashboard (Oscilloscope / Blit Style)
+# Real-Time Streaming Dashboard (Oscilloscope Style)
 
-When a user requests a "flowing line", "oscilloscope-style", or "tape recorder" near real-time visualization that updates continuously (e.g. 60fps) without flickering, jumping, or skipping, you **must not use Streamlit or standard Plotly**. Instead, use the **FastAPI + WebSockets + HTML5 Canvas** architecture.
+Use **FastAPI + WebSockets + HTML5 Canvas** to separate heavy Python DSP from 60fps browser rendering.
 
-This layout cleanly separates the heavy Python data processing from the high-speed rendering engine of the browser.
+## 1. Backend & DSP
+- **Threading**: Run **Hardware Input** and **Math/FFT** on separate `threading.Thread` instances to avoid blocking.
+- **RingBuffer**: Use pre-allocated NumPy arrays with a circular head pointer for O(1) appending.
+- **Filtering**: Use `scipy.signal.sosfilt` for real-time de-meaning/filtering.
+- **Nyquist**: Set filter limits to `0.5Hz` to `0.49 * FS` to maximize visible spectrum.
 
-## 1. Backend: FastAPI + Uvicorn + WebSockets
-- Use `uvicorn` and `FastAPI` as the server.
-- Serve the static index HTML directly from `FastAPI`.
-- Create explicit `@app.websocket()` endpoints.
+## 2. True Sync Architecture (Critical)
+- **Absolute Timestamps**: Send a UTC Unix `epoch` with every packet (end-of-chunk for waveforms).
+- **Unified Formula**: Both streams use `x = width - (now - sampleEpoch - VIEW_DELAY) * pxPerSecond`.
+- **VIEW_DELAY**: Use a shared constant (e.g., 2.0s) to align processed data with the right edge.
+- **Buffer Resilience**: Size buffers for `MAX_FS * 60` (e.g., 12000 samples) to handle hardware that drifts (e.g., 100Hz → 125Hz).
+- **Init Loop**: Pre-fill timestamp arrays at startup spanning `[now - 62s, now - 2s]` to prevent initial gaps.
 
-## 2. DSP & Threading
-- **Hardware/Input Loop**: Run your sensor/data collection on an isolated `threading.Thread()`.
-- **Math/Processing Loop**: Run heavy FFT or aggregation in a *separate* independent `threading.Thread()` so it doesn't block the fast hardware collection.
-- **Buffering**: Use custom `RingBuffer` (pre-allocated 1D or 2D Numpy Array `np.zeros((SIZE, CHANNELS))`) with a circular head pointer, rather than `collections.deque()`. `deque` requires slow `list()` conversions before math can be done. Pre-allocated arrays prevent memory reallocation pauses.
-- **Live Filtering**: Use `scipy.signal.sosfilt` and an Exponential Moving Average for de-meaning real-time streams, as it is strictly superior and more stable than `lfilter`.
-- **FFT & Magnitudes**: If you are calculating the magnitude of multiple axes (e.g. $\sqrt{x^2+y^2+z^2}$) before an FFT mathematically, this inherently introduces a massive mathematical DC offset (0Hz) because it squares the signals. You **must** scrub this synthesized magnitude through a zero-phase `scipy.signal.sosfiltfilt` bandpass *before* applying the FFT Hanning window, otherwise your low-frequency spectrum will be blown out.
-- **FFT Frequency Limits**: Always calculate your theoretical Nyquist Limit, which is exactly half of your sampling rate (e.g. 100Hz Sampling Rate = 50.0Hz Limit). explicitly open your Butterworth Bandpass filters (e.g. `[0.5, 49.9]`) and your downstream API mask (`valid_idx`) to stream up to this limit to maximize your Spectrogram viewable spectrum.
+## 3. Frontend Rendering
+- **Canvas API**: Use `requestAnimationFrame`, not `setInterval`.
+- **Layout**: Stack distinct `<canvas>` elements vertically via CSS Flexbox for multi-axis data.
+- **Time Labels**: Sync HH:MM:SS clock labels by subtracting `VIEW_DELAY` from `Date.now()`.
+- **Spectrogram LUT**: Use a pre-computed 256-entry lookup table for heatmaps to avoid per-pixel `hsl()` strings.
 
-## 3. Data Export & Scientific Formats
-- **Standardizing Network Data**: If exporting accelerometer or seismograph data, use `obspy.Stream` and `obspy.Trace`.
-- **Dependency Issues**: Note that `obspy` has historic dependencies on `pkg_resources`. Ensure you lock `setuptools==69.5.1` (or earlier) in `uv` environments to avoid `ModuleNotFoundError` during `obspy` import.
-- **Serving Binary Downloads**: To download data from memory instead of the disk, instruct FastAPI to return a natively chunked `StreamingResponse` wrapping an `io.BytesIO()` binary blob with headers like `{"Content-Disposition": "attachment; filename=..."}`.
+## 4. Archival (MiniSEED)
+- **Blockettes**: Use `reclen=4096` for disk archiving to minimize overhead.
+- **Background Flushes**: Accumulate data in a `deque`, then flush to disk via a dedicated `archiver_loop` every 10–60s.
+- **Rollover**: Derive filenames from the starting sample's `obspy.UTCDateTime`, not the system clock, to avoid midnight bleed.
 
-## 4. Frontend: Vanilla JS + HTML5 Canvas
-- Use the standard Javascript `canvas.getContext('2d')`.
-- Connect to the backend using native `new WebSocket()`.
-- **Waveform Rendering**: Use `requestAnimationFrame(drawLoop)` to draw the graph. Never use `setInterval`. Append raw Float arrays directly to the canvas memory buffer.
-- **Multi-Axis Layouts**: If rendering distinct Multi-Axis data (e.g. X, Y, Z from an accelerometer), avoid layering them on a single complex canvas layout. Use CSS Flexbox to stack multiple distinct `<canvas>` elements vertically, and let a single `requestAnimationFrame` loop clear and draw to all 2D contexts simultaneously. This guarantees perfect time-step alignment across the axes while maintaining clean UI separation.
-- **Visual Math Synchronization (Phase Alignment)**: A major pitfall in Data Dashboards involves mixing continuous streams (60fps raw data) with chunked calculations (e.g. a 2-second FFT window computed every 1 second). Because that FFT chunk spans `[NOW-2s, NOW]`, its *chronological midpoint* is exactly `NOW-1s`. When drawing it horizontally on the screen, if you plot the FFT at the absolute edge `x=NOW` (offset 0), it will be visually out of phase with the waveform data by +1 second. You **must** compensate by rendering the FFT chunks explicitly delayed by exactly half their window interval natively in your Javascript column iterations to retain true vertical physical stack synchronicity.
-- **Live Timelines**: Avoid drawing heavy numbers directly inside HTML5 Canvas contexts. Generate a rapid Javascript `setInterval(clock, 1000)` that parses the `new Date()` and overwrites floating HTML `div` CSS tags absolutely positioned over the left and right borders of the element bounding boxes.
-- **Hardware Agnostic & White Labeling**: Ensure your UI limits proprietary naming. You can achieve this by storing all Dashboard Labels in a `static/en.json` dictionary. Use Javascript `fetch()` on a master `config.json` to swap the text content of generic `data-i18n` tagged HTML elements. This lets you securely showcase custom analytics dashboards in your portfolio without breaching client confidentiality.
-
-## 5. API Documentation & Testing Architecture
-- **Interactive Swagger UI**: Leverage FastAPI's native OpenAPI integration by enriching `@app.get` definitions with `summary`, `tags`, and explicit `description` strings. 
-- **Documenting WebSockets**: Because Swagger does not inherently expose interactive WebSocket layouts out-of-the-box, clearly detail connecting instructions and data payloads for the `ws://` feeds in the master `FastAPI(description="...")` block.
-- **Unit Testing**: Structure tests logically using `pytest`. Emulate HTTP requests using FastAPI's `TestClient` (which wraps `httpx` / Starlette).
-- **Asynchronous Testing Quirks**: `TestClient.websocket_connect` can be tricky and sometimes causes thread deadlocks on infinite `while True` backend publisher loops if the test context drops rapidly. In robust cases, explicitly design your buffer flush logic or prefer strictly testing the non-socket data extraction endpoints (like `.mseed` downloads) to guarantee CI/CD stability, relying on integration tests for the sockets.
-
-## 6. Example Stack
-- **Python**: `fastapi`, `uvicorn`, `websockets`, `numpy`, `scipy`, `pytest`
-- **Client**: `HTML5 Canvas API`
-
-*Note: Always remember to handle device locking gracefully in `finally:` blocks for hardware sensors.*
-
-## 7. Continuous Archival Storage (MiniSEED)
-When upgrading a live in-memory dashboard into a serious continuous 24/7 logging system (like a seismograph), follow these precise specifications for `obspy`:
-- **Blockette Sizing for Disk vs Network**: While 512-byte Miniseed blockettes are heavily preferred for low-latency network protocols (e.g. SeedLink) to prevent transmission buffering lag, **4096-byte blockettes (`reclen=4096`) are the golden standard for physical disk archiving**. The 4096-byte size vastly reduces the fixed-header overhead ratio, maximizing physical disk storage density and random-access speeds.
-- **Background Flushes**: Never append to disk directly from the high-speed hardware reading thread. Append incoming data safely via a threading lock into an intermediate Python `deque()`, then spawn a 3rd entirely independent `archiver_loop` thread that wakes up every 10-60 seconds to consume that queue, format the Obspy traces, and execute the physical binary unbuffered append (`"ab"`).
-- **Strict UTC Midnight Rollovers**: Archival systems conventionally organize logs in an `SNLCYJ` (Station, Network, Location, Channel, Year, Julian Day) format. To prevent data spanning the `23:59:59` to `00:00:01` timeline from accidentally bleeding across two daily files due to thread latency, **never derive the log filename from the system's execution timestamp**. Always mathematically derive the target Julian Day exclusively from the precisely extrapolated `obspy.UTCDateTime(starttime)` of the very first data sample within the chunk being written.
-- **Zero-Overhead Retention Policies**: Do not run constant file-stat scraping on the server. If building a standard "Keep 180 Days" retention feature, only trigger the strict Python `os.listdir()` and `os.remove()` garbage collection logic **once per day**, triggered strictly only when the loop detects the UTC Julian Day has incremented since its last execution.
-
-## 8. Sensor Clipping / Saturation Detection
-When visualizing accelerometer data in real-time, **clipping detection** (signal hitting the sensor's physical measurement limit) is critical for data integrity awareness. The simplest and most effective approach:
-- **Match Y-Axis to Hardware Range**: Set the Canvas waveform `currentScale` to exactly the sensor's maximum (e.g. `±2.0g` for a high-precision Phidget accelerometer). When a signal clips, it **visually flatlines at the canvas edge** — no backend logic, no extra WebSocket fields, no additional state management needed.
-- **CSS Danger Zones**: Add permanent faint red gradient overlays (`.clip-zone`) at the top and bottom edges (4px) of each waveform panel using `linear-gradient(to bottom, rgba(239,68,68,0.35), transparent)`. These serve as subtle but always-visible visual cues marking where saturation occurs, rendered as simple positioned `<div>` elements layered above the canvas.
-- **Why NOT dynamic API detection**: The Phidget22 API provides `getMaxAcceleration()` and `getMinAcceleration()` methods that return the sensor's physical limits. While useful for hardware-agnostic systems, for a known single-sensor deployment this adds unnecessary complexity (new global state, new locks, new WebSocket payload fields, frontend parsing logic) to accomplish what a fixed Y-axis already shows visually for free.
-- **When to upgrade**: If you later need to **log** clip events (e.g. timestamping them in MiniSEED metadata), **alert** operators programmatically, or support **multiple sensor models** with different ranges, then refactor to the dynamic API approach by checking `abs(acc[axis]) >= ch.getMaxAcceleration()[axis]` in the `on_accel` callback before passing data to the DSP pipeline.
-
-## 9. Layout Compaction for Maximum Canvas Area
-In a 100vh full-screen dashboard, every non-canvas pixel is wasted vertical space. On a 1080p display, text elements (title bars, panel headers, gaps, padding) can silently consume **~27% of the viewport**. Audit your vertical budget systematically:
-- **Gap Reduction**: CSS Flexbox `gap` between stacked panels is the single biggest offender when multiplied across 4+ panels. Reduce from decorative spacing (16px) to tight spacing (8px). At 5 inter-element gaps, this alone recovers **40px**.
-- **Padding Compaction**: The outer `.main-content` container padding should be minimal (10px) — just enough to prevent canvas edges from touching the browser chrome.
-- **Panel Header Minimization**: Each panel header bar (`padding: 10px 16px`, `font-size: 0.80rem`) consumes ~36px × N panels. Compact to `padding: 4px 12px` and `font-size: 0.70rem` — the text remains readable but each header shrinks to ~20px, saving **~12px per panel**.
-- **Title Bar Shrinkage**: The master page title (`h1`) is seen once and then ignored. Reduce `font-size` from `1.5rem` to `1.1rem` and `padding-bottom` from `8px` to `4px`.
-- **Quantified Result**: These purely CSS changes (no JS or backend modifications) typically recover **~118px on 1080p**, yielding a **~15% increase** in total canvas rendering area.
-
-## 10. Interactive Spectrogram Controls
-A static spectrogram with hardcoded color mapping is limiting for real-time analysis. Add lightweight sidebar controls for adjustability — all frontend-only, no backend changes needed:
-- **Rainbow Heatmap via LUT**: Never compute `hsl()` string interpolation per-pixel per-frame. Pre-compute a **256-entry rainbow lookup table** at startup mapping index 0–255 to `hsl(270→0, 100%, lightness%)` (dark purple → blue → cyan → green → yellow → red). Use `RAINBOW_LUT[Math.floor(mag * 255)]` — one array access replaces expensive string concatenation in the hot rendering loop.
-- **Gain Slider**: Add an `<input type="range">` in the sidebar (range `0.1` to `10.0`, step `0.1`, default `1.0`). Multiply the gain value into the magnitude normalization: `mag = (raw / globalMax) * gain`. This lets the operator boost weak signals or suppress overwhelming ones without touching the backend DSP. Update a visible `<span>` label (e.g., `"2.5x"`) on every `input` event.
-- **Linear / Log Scale Toggle**: Add two small toggle buttons (`LIN` / `LOG`) using a shared `.toggle-btn` CSS class with an `.active` state. In log mode, apply `mag = Math.log10(1 + mag * 9)` after linear normalization. This compresses the dynamic range logarithmically, revealing weak frequency content that drowns in linear mode. The `log10(1 + x*9)` function maps `[0,1]` → `[0,1]` monotonically while providing ~10dB of compression.
-- **Color Scale Legend Bar**: Always include a visible gradient strip alongside any heatmap. Use a pure CSS `linear-gradient` matching the LUT stops (e.g., `hsl(0,100%,50%)` → `hsl(270,100%,5%)` top-to-bottom) on a narrow absolutely-positioned `<div>` (12px wide, `height: 100%`, `right: 8px`) inside the `.spectro-container`. Add `MAX` / `MIN` labels using separate positioned `<div>` elements. This is static CSS — no JavaScript needed — and gives operators an immediate visual reference for interpreting the heatmap intensity.
-- **i18n Integration**: All control labels (`SCALE`, `GAIN`) should use `data-i18n` attributes for localization consistency.
+## 5. UI Optimization
+- **Clipping**: Set `currentScale` to the sensor's physical limit (e.g., ±2.0g) so clips naturally flatline at the edge.
+- **Compaction**: Reduce CSS `gap` and `padding` to maximize vertical canvas area (recovers ~15% viewport).
+- **Controls**: Implement Gain (`raw * gain`) and Log Scale (`Math.log10(1 + mag * 9)`) entirely on the frontend.
