@@ -16,5 +16,8 @@
   "panel_spec": "FFT Spectrogram (1s Overlap)",
   "gain_label": "GAIN",
   "wave_scale_label": "WAVE SCALE",
-  "freq_range_label": "FREQ RANGE"
+  "freq_range_label": "FREQ RANGE",
+  "history_label": "History Download (MSEED)",
+  "download_all_btn": "Download All (ZIP)",
+  "scale_label": "SCALE"
 }

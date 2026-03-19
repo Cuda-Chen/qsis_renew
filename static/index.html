@@ -349,7 +349,20 @@
 <body>
     <div class="sidebar">
         <div class="sidebar-title" data-i18n="sidebar_title">功能</div>
-        <button id="downloadMseedBtn" class="download-btn" data-i18n="download_btn">下載<br/>MiniSEED</button>
+        <!-- History Download Section -->
+        <div class="sidebar-control" style="border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 5px;">
+            <label class="sidebar-label" data-i18n="history_label" style="color: var(--accent-green);">歷史下載 (MSEED)</label>
+            <input type="date" id="historyDate" style="width: 100%; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; font-size: 0.75rem; margin-bottom: 8px; font-family: inherit; padding: 0 4px;">
+            
+            <button id="downloadAllBtn" class="download-btn" style="padding: 6px 0; font-size: 0.75rem; margin-bottom: 8px;" data-i18n="download_all_btn">下載全部 (ZIP)</button>
+            
+            <div style="display: flex; gap: 4px; width: 100%;">
+                <button id="downloadZBtn" class="toggle-btn" style="flex: 1; border-color: #3b82f6; color: #3b82f6;" title="Download Z Channel">Z</button>
+                <button id="downloadNBtn" class="toggle-btn" style="flex: 1; border-color: #10b981; color: #10b981;" title="Download N Channel">N</button>
+                <button id="downloadEBtn" class="toggle-btn" style="flex: 1; border-color: #ef4444; color: #ef4444;" title="Download E Channel">E</button>
+            </div>
+        </div>
+        
         <div class="sidebar-control">
             <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
             <div class="toggle-group">

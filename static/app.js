@@ -353,10 +353,30 @@ connectWaveform();
 connectSpectro();
 requestAnimationFrame(drawWaveform);
 
-// Export Data
-document.getElementById('downloadMseedBtn').addEventListener('click', () => {
-    window.location.href = '/api/download_mseed';
-});
+// --- History Data Export ---
+const historyDateInput = document.getElementById('historyDate');
+
+// Set default date to today (UTC)
+const today = new Date().toISOString().split('T')[0];
+if (historyDateInput) historyDateInput.value = today;
+
+function triggerDownload(channel = null) {
+    const date = historyDateInput.value;
+    if (!date) {
+        alert("Please select a date first");
+        return;
+    }
+    let url = `/api/download_mseed?date=${date}`;
+    if (channel) {
+        url += `&channel=${channel}`;
+    }
+    window.location.href = url;
+}
+
+document.getElementById('downloadAllBtn').addEventListener('click', () => triggerDownload());
+document.getElementById('downloadZBtn').addEventListener('click', () => triggerDownload('HLZ'));
+document.getElementById('downloadNBtn').addEventListener('click', () => triggerDownload('HLY')); // HLY = North (N)
+document.getElementById('downloadEBtn').addEventListener('click', () => triggerDownload('HLX')); // HLX = East (E)
 
 // --- Spectrogram Controls ---
 const gainSlider = document.getElementById('gainSlider');

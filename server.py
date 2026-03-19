@@ -4,12 +4,14 @@ import threading
 import time
 import io
 import os
+import zipfile
+import glob
 from datetime import datetime, timezone, timedelta
 import numpy as np
 from collections import deque
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from scipy.signal import butter, sosfilt, sosfilt_zi, sosfiltfilt
 from Phidget22.Devices.Accelerometer import Accelerometer
 import obspy
@@ -316,53 +318,65 @@ def read_root():
     with open("static/index.html", "r") as f:
         return HTMLResponse(content=f.read())
 
-@app.get("/api/download_mseed", summary="Download MiniSEED Data", tags=["Data Export"], response_class=StreamingResponse)
-def download_mseed():
+@app.get("/api/download_mseed", summary="Download MiniSEED Data", tags=["Data Export"])
+def download_mseed(date: str, channel: str = None):
     """
-    Downloads the last 60 seconds of buffered accelerometer data in MiniSEED format.
+    Downloads archived MiniSEED data for a specific date.
     
-    Returns a `.mseed` file as an attachment. If no data has been collected yet, returns a JSON error message.
+    - **date**: Date in YYYY-MM-DD format (Required)
+    - **channel**: Specific channel to download (HLZ, HLX, or HLY). 
+      If omitted, all three channels are returned in a ZIP file.
     """
-    with data_lock:
-        data = waveform_ring.get_all()
+    try:
+        dt = datetime.strptime(date, "%Y-%m-%d")
+        year_str = dt.strftime("%Y")
+        jday_str = dt.strftime("%j")
+    except ValueError:
+        return {"error": "Invalid date format. Use YYYY-MM-DD."}
+    
+    archive_dir = "mseed_archive"
+    
+    # Path A: Specific Channel (Fast direct download)
+    if channel:
+        if channel not in ["HLZ", "HLX", "HLY"]:
+            return {"error": "Invalid channel. Must be HLZ, HLX, or HLY."}
+            
+        # Use glob to find the file (station hex varies)
+        pattern = os.path.join(archive_dir, f"*.TW..{channel}.{year_str}.{jday_str}")
+        matches = glob.glob(pattern)
         
-    if len(data) == 0:
-        return {"error": "No data available yet"}
+        if not matches:
+            return HTMLResponse(content="Data not found for the selected date/channel", status_code=404)
+            
+        target_path = matches[0]
+        filename = os.path.basename(target_path)
+        return FileResponse(path=target_path, filename=filename, media_type="application/octet-stream")
+    
+    # Path B: All Channels (ZIP bundle)
+    else:
+        pattern = os.path.join(archive_dir, f"*.*.*.*.{year_str}.{jday_str}")
+        matches = glob.glob(pattern)
         
-    # Infer start time based on current time minus the buffer duration
-    end_time = obspy.UTCDateTime()
-    start_time = end_time - (len(data) / FS)
-    
-    # ObsPy traces expect contiguous 1D arrays
-    # In our buffer: col 0=X(E), col 1=Y(N), col 2=Z(Z)
-    data_e = np.ascontiguousarray(data[:, 0], dtype=np.float32)
-    data_n = np.ascontiguousarray(data[:, 1], dtype=np.float32)
-    data_z = np.ascontiguousarray(data[:, 2], dtype=np.float32)
-    
-    # Format the Station ID as a 5-digit hex string based on the sensor hardware ID
-    # Default to '00000' if the hardware loop hasn't captured it yet
-    station_hex = f"{latest_sensor_id:05X}" if latest_sensor_id is not None else "00000"
-    
-    stats_base = {'network': 'TW', 'station': station_hex, 'location': '', 'npts': len(data), 'sampling_rate': FS, 'starttime': start_time}
-    
-    trace_z = Trace(data=data_z, header={**stats_base, 'channel': 'HLZ'})
-    trace_x = Trace(data=data_e, header={**stats_base, 'channel': 'HLX'})
-    trace_y = Trace(data=data_n, header={**stats_base, 'channel': 'HLY'})
-    
-    stream = Stream([trace_z, trace_x, trace_y])
-    
-    buf = io.BytesIO()
-    stream.write(buf, format="MSEED")
-    buf.seek(0)
-    
-    # User Note: Temporary dynamic length/filename. To be refactored per user feedback later.
-    filename = f"QSIS_{station_hex}_{end_time.strftime('%Y%m%d_%H%M%S')}.mseed"
-    
-    return StreamingResponse(
-        buf, 
-        media_type="application/vnd.fdsn.mseed", 
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
+        # Filter for our target HL channels
+        hl_matches = [m for m in matches if any(ch in m for ch in ["HLZ", "HLX", "HLY"])]
+        
+        if not hl_matches:
+            return HTMLResponse(content="Data not found for the selected date", status_code=404)
+            
+        # Create ZIP in-memory using STORED (no compression) for max speed and min CPU
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_STORED) as zf:
+            for file_path in hl_matches:
+                zf.write(file_path, arcname=os.path.basename(file_path))
+        
+        zip_buffer.seek(0)
+        zip_name = f"QSIS_Archive_{date}.zip"
+        
+        return StreamingResponse(
+            zip_buffer, 
+            media_type="application/x-zip-compressed",
+            headers={"Content-Disposition": f"attachment; filename={zip_name}"}
+        )
 
 @app.websocket("/ws/waveform")
 async def ws_waveform(websocket: WebSocket):
