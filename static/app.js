@@ -17,10 +17,25 @@ const WEBSOCKET_URL = `ws://${window.location.host}`;
 const Y_AXIS_WIDTH = 50;
 
 // --- Waveform State ---
-let waveX = new Float32Array(FS * SECONDS_TO_SHOW);
-let waveY = new Float32Array(FS * SECONDS_TO_SHOW);
-let waveZ = new Float32Array(FS * SECONDS_TO_SHOW);
-let waveT = new Float64Array(FS * SECONDS_TO_SHOW); // epoch (Unix seconds) per sample
+// Buffer sized for up to MAX_FS Hz to accommodate actual Phidget delivery rates.
+// Timestamp-based rendering positions each sample correctly regardless of buffer size.
+const MAX_FS = 200;  // max expected sample rate; must match server WAVEFORM_BUFFER_SIZE
+const BUFFER_SIZE = MAX_FS * SECONDS_TO_SHOW; // 12000 samples
+let waveX = new Float32Array(BUFFER_SIZE);
+let waveY = new Float32Array(BUFFER_SIZE);
+let waveZ = new Float32Array(BUFFER_SIZE);
+let waveT = new Float64Array(BUFFER_SIZE); // epoch (Unix seconds) per sample
+
+// Initialize waveT with synthetic timestamps spanning the full view window.
+// Without this, samples default to epoch 0 and clamp to x=0 until the buffer fills.
+{
+    const initNow = Date.now() / 1000.0;
+    const INIT_DELAY = 2.0;
+    for (let i = 0; i < waveT.length; i++) {
+        // Spread init timestamps evenly across 60 seconds, regardless of actual FS
+        waveT[i] = initNow - INIT_DELAY - (waveT.length - 1 - i) * (SECONDS_TO_SHOW / waveT.length);
+    }
+}
 let scaleZ = 2.0;
 let scaleN = 2.0;
 let scaleE = 2.0;
@@ -80,7 +95,7 @@ function connectWaveform() {
     wsWaveform = new WebSocket(`${WEBSOCKET_URL}/ws/waveform`);
     wsWaveform.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.y && data.y.length > 0 && data.t != null) {
+        if (data.y && data.y.length > 0) {
             const len = data.y.length;
             waveX.copyWithin(0, len);
             waveY.copyWithin(0, len);
@@ -88,13 +103,14 @@ function connectWaveform() {
             waveT.copyWithin(0, len);
 
             const startIdx = waveX.length - len;
-            const chunkEndEpoch = data.t; // epoch of the last sample in this chunk
-            const dt = 1.0 / FS;          // seconds between consecutive samples
+            // Use real timestamp if server provides it; fall back to estimated 'now - 2s delay'
+            const WAVEFORM_DELAY = 2.0;
+            const chunkEndEpoch = (data.t != null) ? data.t : (Date.now() / 1000.0 - WAVEFORM_DELAY);
+            const dt = 1.0 / FS;
             for (let i = 0; i < len; i++) {
                 waveX[startIdx + i] = data.y[i][0];
                 waveY[startIdx + i] = data.y[i][1];
                 waveZ[startIdx + i] = data.y[i][2];
-                // Reconstruct each sample's epoch from the chunk end time
                 waveT[startIdx + i] = chunkEndEpoch - (len - 1 - i) * dt;
             }
         }
@@ -177,10 +193,12 @@ function drawWaveform() {
     ctxE.fillStyle = '#000000';
     ctxE.fillRect(0, 0, width, height);
 
-    // Shared time-axis: x = width - age * pxPerSecond
-    // This is identical to how drawSpectrogram positions columns — guaranteeing alignment.
+    // Shared time-axis: x = width - (age - VIEW_DELAY) * pxPerSecond
+    // VIEW_DELAY shifts the window so the waveform fills the full canvas.
+    // The right edge represents (now - 2s), left edge represents (now - 62s).
     const pxPerSecond = width / SECONDS_TO_SHOW;
     const nowSec = Date.now() / 1000.0;
+    const VIEW_DELAY = 2.0; // must match server.py delay_samples / FS
 
     function drawAxis(ctx, buffer, color, scale) {
         ctx.strokeStyle = color;
@@ -191,8 +209,8 @@ function drawWaveform() {
         let started = false;
         for (let i = 0; i < len; i++) {
             const age = nowSec - waveT[i];
-            const x = width - age * pxPerSecond;
-            // Skip samples outside the visible window
+            const x = width - (age - VIEW_DELAY) * pxPerSecond;
+            // Skip samples outside the visible 60-second window
             if (x < 0 || x > width) continue;
             const normalized = (buffer[i] / scale + 1) / 2;
             const y = height - (normalized * height);
@@ -229,10 +247,11 @@ function drawSpectrogram() {
 
     if (visibleBins <= 0) return;
 
-    // Shared time-axis. Must use the SAME pxPerSecond as drawWaveform.
+    // Shared time-axis. Must use the SAME pxPerSecond and VIEW_DELAY as drawWaveform.
     const plotWidth = width - Y_AXIS_WIDTH;
-    const pxPerSecond = width / SECONDS_TO_SHOW; // identical denominator to waveform
+    const pxPerSecond = width / SECONDS_TO_SHOW;
     const rowHeight = height / visibleBins;
+    const VIEW_DELAY = 2.0; // must match server.py delay_samples / FS
 
     ctxSpec.fillStyle = '#000000';
     ctxSpec.fillRect(0, 0, width, height);
@@ -253,9 +272,9 @@ function drawSpectrogram() {
         const { mags: timeData, epoch } = specHistory[t];
         if (epoch == null) continue;
 
-        // x = width - age * pxPerSecond  (same formula as waveform)
+        // x = width - (age - VIEW_DELAY) * pxPerSecond  (same formula as waveform)
         const age = nowSec - epoch;
-        const xRight = width - age * pxPerSecond;
+        const xRight = width - (age - VIEW_DELAY) * pxPerSecond;
         const xPos = xRight - pxPerSecond; // left edge of this 1-second column
 
         // Skip columns fully outside the visible area
@@ -483,9 +502,9 @@ function positionTooltip(e) {
 
 // --- Dynamic Datetime Clock ---
 function updateAxisClocks() {
-    const now = new Date();
-    // Offset by 60 seconds for the left axis
-    const past = new Date(now.getTime() - 60000);
+    const VIEW_DELAY = 2.0; // matching waveform delay
+    const now = new Date(Date.now() - VIEW_DELAY * 1000);
+    const past = new Date(now.getTime() - SECONDS_TO_SHOW * 1000);
 
     const pad = (n) => n.toString().padStart(2, '0');
 
@@ -493,21 +512,12 @@ function updateAxisClocks() {
     const timeRightStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const timeLeftStr = `${pad(past.getHours())}:${pad(past.getMinutes())}:${pad(past.getSeconds())}`;
 
-    // Update all right-side labels (NOW)
-    const rightLabels = document.querySelectorAll('.time-right');
-    rightLabels.forEach(el => {
-        // For the spectrogram, it technically is 2 seconds delayed mathematically due to FFT chunking,
-        // but we can append the label gracefully.
-        if (el.parentElement.className === 'spectro-container') {
-            el.innerHTML = `${timeRightStr} (-2s)`;
-        } else {
-            el.innerHTML = timeRightStr;
-        }
+    // Update all right-side labels
+    document.querySelectorAll('.time-right').forEach(el => {
+        el.innerHTML = timeRightStr;
     });
-
-    // Update all left-side labels (T-60s)
-    const leftLabels = document.querySelectorAll('.time-left');
-    leftLabels.forEach(el => {
+    // Update all left-side labels
+    document.querySelectorAll('.time-left').forEach(el => {
         el.innerHTML = timeLeftStr;
     });
 }

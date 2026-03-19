@@ -72,7 +72,9 @@ class RingBuffer:
             return np.concatenate((self.buffer[self.head:], self.buffer[:self.head]))
 
 # We store 60 seconds of raw continuous data for history/downloading
-WAVEFORM_BUFFER_SIZE = int(FS * 60)
+# Buffer sized for up to 200Hz to accommodate actual Phidget delivery rates
+# (sensor may fire faster than the configured DATA_INTERVAL_MS)
+WAVEFORM_BUFFER_SIZE = int(200 * 60)  # 12000 samples
 waveform_ring = RingBuffer(WAVEFORM_BUFFER_SIZE)
 data_lock = threading.Lock()
 
