@@ -242,23 +242,27 @@ def flush_archive(archive_dir, station_hex, next_start_time):
         'starttime': next_start_time
     }
     
-    # Set record length
+    # Set record length and professional encoding (STEIM-2 for compressed integers)
     reclen = 4096
+    encoding = "STEIM2"
+
+    # Scale data to integers (g * 1e6) to preserve precision while enabling compression
+    scaled_data = (data_to_write * 1e6).astype(np.int32)
 
     # Write Z channel (col 2)
-    trace_z = Trace(data=np.ascontiguousarray(data_to_write[:, 2], dtype=np.float32), header={**stats_base, 'channel': 'HLZ'})
+    trace_z = Trace(data=np.ascontiguousarray(scaled_data[:, 2]), header={**stats_base, 'channel': 'HLZ'})
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLZ.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_z]).write(f, format="MSEED", reclen=reclen)
+        Stream([trace_z]).write(f, format="MSEED", reclen=reclen, encoding=encoding)
         
-    # Write East channel (col 0) - Standard name: HLE (was HLX)
-    trace_e = Trace(data=np.ascontiguousarray(data_to_write[:, 0], dtype=np.float32), header={**stats_base, 'channel': 'HLE'})
+    # Write East channel (col 0) - Standard name: HLE
+    trace_e = Trace(data=np.ascontiguousarray(scaled_data[:, 0]), header={**stats_base, 'channel': 'HLE'})
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLE.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_e]).write(f, format="MSEED", reclen=reclen)
+        Stream([trace_e]).write(f, format="MSEED", reclen=reclen, encoding=encoding)
         
-    # Write North channel (col 1) - Standard name: HLN (was HLY)
-    trace_n = Trace(data=np.ascontiguousarray(data_to_write[:, 1], dtype=np.float32), header={**stats_base, 'channel': 'HLN'})
+    # Write North channel (col 1) - Standard name: HLN
+    trace_n = Trace(data=np.ascontiguousarray(scaled_data[:, 1]), header={**stats_base, 'channel': 'HLN'})
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLN.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_n]).write(f, format="MSEED", reclen=reclen)
+        Stream([trace_n]).write(f, format="MSEED", reclen=reclen, encoding=encoding)
         
     # Return the incremented start time for contiguous subsequent blocks
     return next_start_time + (npts / FS)

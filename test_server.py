@@ -80,11 +80,19 @@ def test_flush_archive_rollover(tmp_path):
         assert "5AFD2.TW..HLE.2026.070" in files_created
         assert "5AFD2.TW..HLN.2026.070" in files_created
         
-        # 4. Assert MiniSEED file structure is intact
+        # 4. Assert MiniSEED file structure and optimization are intact
         st = obspy.read(os.path.join(archive_dir, "5AFD2.TW..HLZ.2026.070"))
         assert len(st) == 1
-        assert st[0].stats.npts >= 10
-        assert st[0].stats.channel == "HLZ"
+        tr = st[0]
+        assert tr.stats.npts >= 10
+        assert tr.stats.channel == "HLZ"
+        
+        # Verify STEIM-2 encoding (Encoding 11 in MiniSEED v2, but Obspy maps to 'STEIM2')
+        assert tr.stats.mseed.encoding == 'STEIM2'
+        
+        # Verify g * 1e6 scaling (input was 4.2 -> should be 4,200,000)
+        # Obspy may return float64 by default when reading, but the raw values should match
+        np.testing.assert_allclose(tr.data[:10], 4200000)
     finally:
         server.datetime = original_datetime
 
