@@ -249,15 +249,15 @@ def flush_archive(archive_dir, station_hex, next_start_time):
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLZ.{year_str}.{jday_str}"), "ab") as f:
         Stream([trace_z]).write(f, format="MSEED", reclen=reclen)
         
-    # Write X channel (col 0)
-    trace_x = Trace(data=np.ascontiguousarray(data_to_write[:, 0], dtype=np.float32), header={**stats_base, 'channel': 'HLX'})
-    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLX.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_x]).write(f, format="MSEED", reclen=reclen)
+    # Write East channel (col 0) - Standard name: HLE (was HLX)
+    trace_e = Trace(data=np.ascontiguousarray(data_to_write[:, 0], dtype=np.float32), header={**stats_base, 'channel': 'HLE'})
+    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLE.{year_str}.{jday_str}"), "ab") as f:
+        Stream([trace_e]).write(f, format="MSEED", reclen=reclen)
         
-    # Write Y channel (col 1)
-    trace_y = Trace(data=np.ascontiguousarray(data_to_write[:, 1], dtype=np.float32), header={**stats_base, 'channel': 'HLY'})
-    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLY.{year_str}.{jday_str}"), "ab") as f:
-        Stream([trace_y]).write(f, format="MSEED", reclen=reclen)
+    # Write North channel (col 1) - Standard name: HLN (was HLY)
+    trace_n = Trace(data=np.ascontiguousarray(data_to_write[:, 1], dtype=np.float32), header={**stats_base, 'channel': 'HLN'})
+    with open(os.path.join(archive_dir, f"{station_hex}.TW..HLN.{year_str}.{jday_str}"), "ab") as f:
+        Stream([trace_n]).write(f, format="MSEED", reclen=reclen)
         
     # Return the incremented start time for contiguous subsequent blocks
     return next_start_time + (npts / FS)
@@ -338,16 +338,23 @@ def download_mseed(date: str, channel: str = None):
     
     # Path A: Specific Channel (Fast direct download)
     if channel:
-        if channel not in ["HLZ", "HLX", "HLY"]:
-            return {"error": "Invalid channel. Must be HLZ, HLX, or HLY."}
+        if channel not in ["HLZ", "HLE", "HLN"]:
+            return {"error": "Invalid channel. Must be HLZ, HLE, or HLN."}
             
-        # Use glob to find the file (station hex varies)
-        pattern = os.path.join(archive_dir, f"*.TW..{channel}.{year_str}.{jday_str}")
-        matches = glob.glob(pattern)
+        # Backward compatibility: map standard codes back to legacy if new files missing
+        search_codes = [channel]
+        if channel == "HLE": search_codes.append("HLX")
+        if channel == "HLN": search_codes.append("HLY")
+        
+        matches = []
+        for code in search_codes:
+            pattern = os.path.join(archive_dir, f"*.TW..{code}.{year_str}.{jday_str}")
+            matches.extend(glob.glob(pattern))
         
         if not matches:
             return HTMLResponse(content="Data not found for the selected date/channel", status_code=404)
             
+        # Take the first match (prefer standard code if both exist)
         target_path = matches[0]
         filename = os.path.basename(target_path)
         return FileResponse(path=target_path, filename=filename, media_type="application/octet-stream")
@@ -357,8 +364,9 @@ def download_mseed(date: str, channel: str = None):
         pattern = os.path.join(archive_dir, f"*.*.*.*.{year_str}.{jday_str}")
         matches = glob.glob(pattern)
         
-        # Filter for our target HL channels
-        hl_matches = [m for m in matches if any(ch in m for ch in ["HLZ", "HLX", "HLY"])]
+        # Filter for our target HL channels (include legacy HLX/HLY for transition)
+        target_chans = ["HLZ", "HLE", "HLN", "HLX", "HLY"]
+        hl_matches = [m for m in matches if any(ch in m for ch in target_chans)]
         
         if not hl_matches:
             return HTMLResponse(content="Data not found for the selected date", status_code=404)

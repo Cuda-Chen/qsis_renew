@@ -375,8 +375,8 @@ function triggerDownload(channel = null) {
 
 document.getElementById('downloadAllBtn').addEventListener('click', () => triggerDownload());
 document.getElementById('downloadZBtn').addEventListener('click', () => triggerDownload('HLZ'));
-document.getElementById('downloadNBtn').addEventListener('click', () => triggerDownload('HLY')); // HLY = North (N)
-document.getElementById('downloadEBtn').addEventListener('click', () => triggerDownload('HLX')); // HLX = East (E)
+document.getElementById('downloadNBtn').addEventListener('click', () => triggerDownload('HLN')); // HLN = North
+document.getElementById('downloadEBtn').addEventListener('click', () => triggerDownload('HLE')); // HLE = East
 
 // --- Spectrogram Controls ---
 const gainSlider = document.getElementById('gainSlider');
