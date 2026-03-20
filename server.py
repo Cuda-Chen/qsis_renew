@@ -130,11 +130,12 @@ def hardware_loop():
     ch = Accelerometer()
     
     def on_accel(self, acc, ts):
-        f = dsp.process(acc[0], acc[1], acc[2])
+        processed = dsp.process(acc[0], acc[1], acc[2])
         with data_lock:
-            waveform_ring.append(f)
+            waveform_ring.append(processed)
         with archive_lock:
-            archive_queue.append(f)
+            # Store raw (unprocessed) data in the archive
+            archive_queue.append(acc)
 
     ch.setOnAccelerationChangeHandler(on_accel)
     
