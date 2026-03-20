@@ -18,60 +18,25 @@ def test_read_root():
     assert "text/html" in response.headers["content-type"]
 
 def test_download_mseed_valid():
-    # 1. Inject some mock accelerometer data directly into the RingBuffer
-    test_data = np.array([
-        [1.0, 2.0, 3.0], # E, N, Z
-        [1.1, 2.1, 3.1],
-        [1.2, 2.2, 3.2],
-        [1.3, 2.3, 3.3],
-        [1.4, 2.4, 3.4],
-    ])
-    
-    with data_lock:
-        # Clear buffer and simulate writing 5 records
-        waveform_ring.head = 0
-        waveform_ring.full = False
-        for row in test_data:
-            waveform_ring.append(row)
-
-    # 1.5 Inject a mock hardware ID into the server module so it can be formatted to hex
-    server.latest_sensor_id = 372690  # 372690 in decimal -> 5AFD2 in hex
-
-    # 2. Hit the download endpoint
-    response = client.get("/api/download_mseed")
-    
-    # 3. Assert HTTP success
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "application/vnd.fdsn.mseed"
-    assert "attachment; filename=QSIS_5AFD2_" in response.headers["content-disposition"]
-    
-    # 4. Read the raw bytes back into an Obspy Stream
-    mseed_bytes = io.BytesIO(response.content)
-    stream = obspy.read(mseed_bytes, format="MSEED")
-    
-    # 5. Verify the Obspy Stream contents
-    assert isinstance(stream, Stream)
-    assert len(stream) == 3  # We expect Z, X, and Y channels
-    
-    channels_found = [tr.stats.channel for tr in stream]
-    assert "HLZ" in channels_found
-    assert "HLX" in channels_found
-    assert "HLY" in channels_found
-    
-    # The station ID should be the 5-digit hex representation (5AFD2)
-    # The network should be TW, location should be empty
-    z_trace = stream.select(channel="HLZ")[0]
-    assert z_trace.stats.station == "5AFD2"
-    assert z_trace.stats.network == "TW"
-    assert z_trace.stats.location == ""
-    assert z_trace.stats.npts >= len(test_data) # Obspy may pad records to fulfill blockette frames
-    np.testing.assert_allclose(z_trace.data[:len(test_data)], test_data[:, 2])
-    
-    x_trace = stream.select(channel="HLX")[0]
-    np.testing.assert_allclose(x_trace.data[:len(test_data)], test_data[:, 0])
-    
-    y_trace = stream.select(channel="HLY")[0]
-    np.testing.assert_allclose(y_trace.data[:len(test_data)], test_data[:, 1])
+    """Verify that date-based archival download works for a specific channel."""
+    import os
+    os.makedirs("mseed_archive", exist_ok=True)
+    try:
+        # Create a dummy file for 2026-03-20 (Jday 079)
+        test_file = os.path.join("mseed_archive", "5AFD2.TW..HLE.2026.079")
+        with open(test_file, "wb") as f:
+            f.write(b"mock_mseed_data")
+            
+        # 1. Hit the download endpoint with required date and channel
+        response = client.get("/api/download_mseed?date=2026-03-20&channel=HLE")
+        
+        # 2. Assert HTTP success
+        assert response.status_code == 200
+        assert response.content == b"mock_mseed_data"
+        assert "5AFD2.TW..HLE.2026.079" in response.headers["content-disposition"]
+    finally:
+        # Cleanup
+        if os.path.exists(test_file): os.remove(test_file)
 
 
 def test_flush_archive_rollover(tmp_path):
@@ -112,8 +77,8 @@ def test_flush_archive_rollover(tmp_path):
         files_created = os.listdir(archive_dir)
         assert len(files_created) == 3
         assert "5AFD2.TW..HLZ.2026.070" in files_created
-        assert "5AFD2.TW..HLX.2026.070" in files_created
-        assert "5AFD2.TW..HLY.2026.070" in files_created
+        assert "5AFD2.TW..HLE.2026.070" in files_created
+        assert "5AFD2.TW..HLN.2026.070" in files_created
         
         # 4. Assert MiniSEED file structure is intact
         st = obspy.read(os.path.join(archive_dir, "5AFD2.TW..HLZ.2026.070"))
