@@ -349,59 +349,70 @@
 <body>
     <div class="sidebar">
         <div class="sidebar-title" data-i18n="sidebar_title">功能</div>
-        <!-- History Download Section -->
-        <div class="sidebar-control" style="border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 5px;">
-            <label class="sidebar-label" data-i18n="history_label" style="color: var(--accent-green);">歷史下載 (MSEED)</label>
-            <input type="date" id="historyDate" style="width: 100%; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; font-size: 0.75rem; margin-bottom: 8px; font-family: inherit; padding: 0 4px;">
+        
+        <!-- WAVEFORM TOOLS SECTION -->
+        <div style="width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px;">
+            <div style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Waveform Tools</div>
             
-            <button id="downloadAllBtn" class="download-btn" style="padding: 6px 0; font-size: 0.75rem; margin-bottom: 8px;" data-i18n="download_all_btn">下載全部 (ZIP)</button>
-            
-            <div style="display: flex; gap: 4px; width: 100%;">
-                <button id="downloadZBtn" class="toggle-btn" style="flex: 1; border-color: #3b82f6; color: #3b82f6;" title="Download Z Channel">Z</button>
-                <button id="downloadNBtn" class="toggle-btn" style="flex: 1; border-color: #10b981; color: #10b981;" title="Download N Channel">N</button>
-                <button id="downloadEBtn" class="toggle-btn" style="flex: 1; border-color: #ef4444; color: #ef4444;" title="Download E Channel">E</button>
+            <div class="sidebar-control" style="margin-bottom: 15px;">
+                <label class="sidebar-label" data-i18n="wave_scale_label">WAVE SCALE</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span class="sidebar-value" style="color: #3b82f6;">Z: <span id="valScaleZ">2.0</span>g</span>
+                        <input type="range" id="scaleZ" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #3b82f6; width: 80%;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span class="sidebar-value" style="color: #10b981;">N: <span id="valScaleN">2.0</span>g</span>
+                        <input type="range" id="scaleN" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #10b981; width: 80%;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span class="sidebar-value" style="color: #ef4444;">E: <span id="valScaleE">2.0</span>g</span>
+                        <input type="range" id="scaleE" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #ef4444; width: 80%;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-control">
+                <label class="sidebar-label" data-i18n="history_label" style="color: var(--accent-green);">歷史下載 (MSEED)</label>
+                <input type="date" id="historyDate" style="width: 100%; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; font-size: 0.75rem; margin-bottom: 8px; font-family: inherit; padding: 0 4px;">
+                <button id="downloadAllBtn" class="download-btn" style="padding: 6px 0; font-size: 0.75rem; margin-bottom: 8px;" data-i18n="download_all_btn">下載全部 (ZIP)</button>
+                <div style="display: flex; gap: 4px; width: 100%;">
+                    <button id="downloadZBtn" class="toggle-btn" style="flex: 1; border-color: #3b82f6; color: #3b82f6;" title="Download Z Channel">Z</button>
+                    <button id="downloadNBtn" class="toggle-btn" style="flex: 1; border-color: #10b981; color: #10b981;" title="Download N Channel">N</button>
+                    <button id="downloadEBtn" class="toggle-btn" style="flex: 1; border-color: #ef4444; color: #ef4444;" title="Download E Channel">E</button>
+                </div>
             </div>
         </div>
         
-        <div class="sidebar-control">
-            <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
-            <div class="toggle-group">
-                <button id="btnLin" class="toggle-btn active">LIN</button>
-                <button id="btnLog" class="toggle-btn">LOG</button>
-            </div>
-        </div>
-        <div class="sidebar-control">
-            <label class="sidebar-label" data-i18n="gain_label">GAIN</label>
-            <input type="range" id="gainSlider" min="0.1" max="10" step="0.1" value="1.0">
-            <span id="gainValue" class="sidebar-value">1.0x</span>
-        </div>
-        <div class="sidebar-control">
-            <label class="sidebar-label" data-i18n="wave_scale_label">WAVE SCALE</label>
-            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <span class="sidebar-value" style="color: #3b82f6;">Z: <span id="valScaleZ">2.0</span>g</span>
-                    <input type="range" id="scaleZ" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #3b82f6; width: 80%;">
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <span class="sidebar-value" style="color: #10b981;">N: <span id="valScaleN">2.0</span>g</span>
-                    <input type="range" id="scaleN" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #10b981; width: 80%;">
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <span class="sidebar-value" style="color: #ef4444;">E: <span id="valScaleE">2.0</span>g</span>
-                    <input type="range" id="scaleE" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #ef4444; width: 80%;">
+        <!-- SPECTROGRAM TOOLS SECTION -->
+        <div style="width: 100%;">
+            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Spectrogram Tools</div>
+            
+            <div class="sidebar-control" style="margin-bottom: 15px;">
+                <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
+                <div class="toggle-group">
+                    <button id="btnLin" class="toggle-btn active">LIN</button>
+                    <button id="btnLog" class="toggle-btn">LOG</button>
                 </div>
             </div>
-        </div>
-        <div class="sidebar-control">
-            <label class="sidebar-label" data-i18n="freq_range_label">FREQ RANGE</label>
-            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <span class="sidebar-value">MIN: <span id="valFreqMin">0.5</span>Hz</span>
-                    <input type="range" id="freqMin" min="0.5" max="49.5" step="0.5" value="0.5" style="width: 80%;">
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center;">
-                    <span class="sidebar-value">MAX: <span id="valFreqMax">50.0</span>Hz</span>
-                    <input type="range" id="freqMax" min="1.0" max="50.0" step="0.5" value="50.0" style="width: 80%;">
+            
+            <div class="sidebar-control" style="margin-bottom: 15px;">
+                <label class="sidebar-label" data-i18n="gain_label">GAIN</label>
+                <input type="range" id="gainSlider" min="0.1" max="10" step="0.1" value="1.0">
+                <span id="gainValue" class="sidebar-value">1.0x</span>
+            </div>
+            
+            <div class="sidebar-control">
+                <label class="sidebar-label" data-i18n="freq_range_label">FREQ RANGE</label>
+                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span class="sidebar-value">MIN: <span id="valFreqMin">0.5</span>Hz</span>
+                        <input type="range" id="freqMin" min="0.5" max="49.5" step="0.5" value="0.5" style="width: 80%;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span class="sidebar-value">MAX: <span id="valFreqMax">50.0</span>Hz</span>
+                        <input type="range" id="freqMax" min="1.0" max="50.0" step="0.5" value="50.0" style="width: 80%;">
+                    </div>
                 </div>
             </div>
         </div>
