@@ -283,8 +283,12 @@ function drawSpectrogram() {
         const { mags: timeData, epoch } = specHistory[t];
         if (epoch == null) continue;
 
+        // Apply a 1.0 second leftward shift to align the visual rendering with the 
+        // true START of the 2-second FFT window, matching waveform onset.
+        const adjustedEpoch = epoch - 1.0;
+        const age = nowSec - adjustedEpoch;
+        
         // x = width - (age - VIEW_DELAY) * pxPerSecond  (same formula as waveform)
-        const age = nowSec - epoch;
         const xRight = width - (age - VIEW_DELAY) * pxPerSecond;
         const xPos = xRight - pxPerSecond; // left edge of this 1-second column
 
