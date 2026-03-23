@@ -12,7 +12,7 @@ from collections import deque
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
-from scipy.signal import butter, sosfilt, sosfilt_zi, sosfiltfilt
+from scipy.signal import butter, sosfilt, sosfilt_zi, sosfiltfilt, welch
 from Phidget22.Devices.Accelerometer import Accelerometer
 import obspy
 from obspy import Trace, Stream
@@ -208,20 +208,27 @@ def math_loop():
         window_samples = int(curr_fs * FFT_WINDOW_SEC)
         hanning_window = np.hanning(window_samples)
         
+        # 60-second window for long-term spectrum (Welch)
+        window_samples_60s = int(curr_fs * 60)
+        
         with data_lock:
             data_window = waveform_ring.get_window(window_samples)
+            data_window_60s = waveform_ring.get_window(window_samples_60s)
             
         if data_window is not None:
-            # Linear approach: FFT per axis
-            mags_sq_sum = np.zeros(window_samples // 2 + 1)
+            # Linear approach: FFT per axis for the 2s spectrogram
+            fft_z = np.fft.rfft(data_window[:, 0] * hanning_window)
+            fft_n = np.fft.rfft(data_window[:, 1] * hanning_window)
+            fft_e = np.fft.rfft(data_window[:, 2] * hanning_window)
             
-            for i in range(3):
-                windowed = data_window[:, i] * hanning_window
-                fft_vals = np.fft.rfft(windowed)
-                mags_sq_sum += np.abs(fft_vals)**2
+            # Root-Sum-Square (RSS) of magnitudes for spectrogram
+            combined_mags = np.sqrt(np.abs(fft_z)**2 + np.abs(fft_n)**2 + np.abs(fft_e)**2) / window_samples
             
-            # Root-Sum-Square (RSS) of magnitudes
-            combined_mags = np.sqrt(mags_sq_sum) / window_samples
+            # Gal conversion for individual 2s spectrum
+            # 1 g = 980 Gal
+            gal_z = (np.abs(fft_z) / window_samples) * 980.0
+            gal_n = (np.abs(fft_n) / window_samples) * 980.0
+            gal_e = (np.abs(fft_e) / window_samples) * 980.0
             
             # Frequency vector based on ACTUAL FS
             freqs = np.fft.rfftfreq(window_samples, 1/curr_fs)
@@ -229,9 +236,32 @@ def math_loop():
             # Filter for UI (0.5 - 50.0 Hz)
             valid_idx = (freqs >= 0.5) & (freqs <= 50.0)
             
+            # Calculate 60s Welch PSD if enough data
+            welch_z, welch_n, welch_e = [], [], []
+            if data_window_60s is not None and len(data_window_60s) == window_samples_60s:
+                # nperseg is exactly 2 seconds, to match the spectrogram's resolution
+                f_welch, pxx_z = welch(data_window_60s[:, 0], fs=curr_fs, nperseg=window_samples)
+                _, pxx_n = welch(data_window_60s[:, 1], fs=curr_fs, nperseg=window_samples)
+                _, pxx_e = welch(data_window_60s[:, 2], fs=curr_fs, nperseg=window_samples)
+                # Convert PSD from g^2/Hz to Gal^2/Hz, then take sqrt to get amplitude (pseudo-amplitude spectrum)
+                # Actually, standard amplitude spectrum from Welch is sqrt(PSD). We want Gal.
+                welch_z = (np.sqrt(pxx_z) * 980.0)[valid_idx].tolist()
+                welch_n = (np.sqrt(pxx_n) * 980.0)[valid_idx].tolist()
+                welch_e = (np.sqrt(pxx_e) * 980.0)[valid_idx].tolist()
+            else:
+                welch_z = gal_z[valid_idx].tolist()
+                welch_n = gal_n[valid_idx].tolist()
+                welch_e = gal_e[valid_idx].tolist()
+            
             latest_spectrogram = {
                 "freqs": freqs[valid_idx].tolist(),
                 "mags": combined_mags[valid_idx].tolist(),
+                "z_2s": gal_z[valid_idx].tolist(),
+                "n_2s": gal_n[valid_idx].tolist(),
+                "e_2s": gal_e[valid_idx].tolist(),
+                "z_60s": welch_z,
+                "n_60s": welch_n,
+                "e_60s": welch_e,
                 "epoch": time.time()
             }
 

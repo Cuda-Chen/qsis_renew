@@ -52,6 +52,11 @@ let useLogScale = false;
 let specMinFreq = 0.5;
 let specMaxFreq = 50.0;
 
+// --- Spectrum State ---
+let isSpectrumMode = false;
+let spectrumWindowSize = '2s'; // '2s' or '60s'
+let latestSpectrumData = null;
+
 // Pre-compute a 256-entry rainbow LUT at startup
 // Gradient: dark purple (silence) → blue → cyan → green → yellow → orange → red (max)
 const RAINBOW_LUT = new Array(256);
@@ -130,6 +135,7 @@ function connectSpectro() {
             if (specHistory.length > SPEC_ROWS) {
                 specHistory.pop();
             }
+            latestSpectrumData = data;
         }
     };
 }
@@ -232,8 +238,13 @@ function drawWaveform() {
     requestAnimationFrame(drawWaveform);
 }
 
-// --- Render Loop (Spectrogram) ---
+// --- Render Loop (Spectrogram or Spectrum) ---
 function drawSpectrogram() {
+    if (isSpectrumMode) {
+        drawSpectrumPlot();
+        return;
+    }
+
     if (specHistory.length === 0) return;
 
     const width = spectroCanvas.width;
@@ -348,6 +359,120 @@ function drawSpectrogram() {
     });
 }
 
+function drawSpectrumPlot() {
+    if (!latestSpectrumData) return;
+
+    const width = spectroCanvas.width;
+    const height = spectroCanvas.height;
+    
+    ctxSpec.fillStyle = '#000000';
+    ctxSpec.fillRect(0, 0, width, height);
+
+    const freqs = latestSpectrumData.freqs;
+    const zData = spectrumWindowSize === '2s' ? latestSpectrumData.z_2s : latestSpectrumData.z_60s;
+    const nData = spectrumWindowSize === '2s' ? latestSpectrumData.n_2s : latestSpectrumData.n_60s;
+    const eData = spectrumWindowSize === '2s' ? latestSpectrumData.e_2s : latestSpectrumData.e_60s;
+
+    if (!freqs || !zData) return;
+
+    // Filter to selected freq range
+    let minIdx = 0;
+    let maxIdx = freqs.length - 1;
+    for (let i = 0; i < freqs.length; i++) {
+        if (freqs[i] < specMinFreq) minIdx = i + 1;
+        if (freqs[i] <= specMaxFreq) maxIdx = i;
+    }
+
+    if (maxIdx <= minIdx || minIdx >= freqs.length) return;
+
+    // Determine max amplitude for Y-axis scaling
+    let maxAmp = 0.001;
+    for (let i = minIdx; i <= maxIdx; i++) {
+        if (zData[i] > maxAmp) maxAmp = zData[i];
+        if (nData[i] > maxAmp) maxAmp = nData[i];
+        if (eData[i] > maxAmp) maxAmp = eData[i];
+    }
+    
+    let maxDisplayGal = (maxAmp * 1.1) / specGain; 
+
+    // Drawing helper
+    function drawLinePlot(dataArray, color) {
+        ctxSpec.strokeStyle = color;
+        ctxSpec.lineWidth = 1.5;
+        ctxSpec.lineJoin = 'round';
+        ctxSpec.beginPath();
+        let started = false;
+
+        for (let i = minIdx; i <= maxIdx; i++) {
+            const f = freqs[i];
+            const px = Y_AXIS_WIDTH + ((f - specMinFreq) / (specMaxFreq - specMinFreq)) * (width - Y_AXIS_WIDTH);
+            let amp = dataArray[i];
+            
+            let py;
+            if (useLogScale) {
+                const logVal = Math.max(0, Math.log10(1 + (amp / maxDisplayGal) * 9));
+                py = height - (height * logVal);
+            } else {
+                py = height - (height * (amp / maxDisplayGal));
+            }
+            if (py < 0) py = 0; // clamp to top of canvas
+
+            if (!started) {
+                ctxSpec.moveTo(px, py);
+                started = true;
+            } else {
+                ctxSpec.lineTo(px, py);
+            }
+        }
+        ctxSpec.stroke();
+    }
+
+    // Draw Z (Blue), N (Green), E (Red)
+    drawLinePlot(zData, '#3b82f6');
+    drawLinePlot(nData, '#10b981');
+    drawLinePlot(eData, '#ef4444');
+
+    // --- Draw Ticks & Gridlines ---
+    ctxSpec.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctxSpec.font = '10px Courier New';
+
+    // Y-axis ticks (Amplitude in Gal)
+    ctxSpec.textAlign = 'right';
+    ctxSpec.textBaseline = 'top';
+    ctxSpec.fillText(`${maxDisplayGal.toFixed(2)} Gal`, Y_AXIS_WIDTH - 5, 5);
+    ctxSpec.textBaseline = 'bottom';
+    ctxSpec.fillText(`0 Gal`, Y_AXIS_WIDTH - 5, height - 5);
+
+    // Draw Y-axis line
+    ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctxSpec.lineWidth = 1;
+    ctxSpec.beginPath();
+    ctxSpec.moveTo(Y_AXIS_WIDTH, 0);
+    ctxSpec.lineTo(Y_AXIS_WIDTH, height);
+    ctxSpec.stroke();
+
+    // X-axis ticks (Frequency)
+    ctxSpec.textAlign = 'center';
+    ctxSpec.textBaseline = 'bottom';
+    const delta = specMaxFreq - specMinFreq;
+    let interval = 5;
+    if (delta <= 10) interval = 1;
+    else if (delta <= 20) interval = 2;
+
+    let startTick = Math.ceil(specMinFreq / interval) * interval;
+    for (let f = startTick; f <= specMaxFreq; f += interval) {
+        const px = Y_AXIS_WIDTH + ((f - specMinFreq) / delta) * (width - Y_AXIS_WIDTH);
+        
+        ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctxSpec.beginPath();
+        ctxSpec.moveTo(px, 0);
+        ctxSpec.lineTo(px, height);
+        ctxSpec.stroke();
+        
+        ctxSpec.fillText(`${f}Hz`, px, height - 5);
+    }
+}
+
 // Start everything
 connectWaveform();
 connectSpectro();
@@ -378,11 +503,47 @@ document.getElementById('downloadZBtn').addEventListener('click', () => triggerD
 document.getElementById('downloadNBtn').addEventListener('click', () => triggerDownload('HLN')); // HLN = North
 document.getElementById('downloadEBtn').addEventListener('click', () => triggerDownload('HLE')); // HLE = East
 
-// --- Spectrogram Controls ---
+// --- Spectrogram / Spectrum Controls ---
 const gainSlider = document.getElementById('gainSlider');
 const gainValueLabel = document.getElementById('gainValue');
 const btnLin = document.getElementById('btnLin');
 const btnLog = document.getElementById('btnLog');
+
+const btnModeSpectrogram = document.getElementById('btnModeSpectrogram');
+const btnModeSpectrum = document.getElementById('btnModeSpectrum');
+const spectrumWindowControl = document.getElementById('spectrumWindowControl');
+const btnWin2s = document.getElementById('btnWin2s');
+const btnWin60s = document.getElementById('btnWin60s');
+
+if (btnModeSpectrogram) {
+    btnModeSpectrogram.addEventListener('click', () => {
+        isSpectrumMode = false;
+        btnModeSpectrogram.classList.add('active');
+        btnModeSpectrum.classList.remove('active');
+        spectrumWindowControl.style.display = 'none';
+    });
+
+    btnModeSpectrum.addEventListener('click', () => {
+        isSpectrumMode = true;
+        btnModeSpectrum.classList.add('active');
+        btnModeSpectrogram.classList.remove('active');
+        spectrumWindowControl.style.display = 'flex';
+    });
+}
+
+if (btnWin2s) {
+    btnWin2s.addEventListener('click', () => {
+        spectrumWindowSize = '2s';
+        btnWin2s.classList.add('active');
+        btnWin60s.classList.remove('active');
+    });
+
+    btnWin60s.addEventListener('click', () => {
+        spectrumWindowSize = '60s';
+        btnWin60s.classList.add('active');
+        btnWin2s.classList.remove('active');
+    });
+}
 
 gainSlider.addEventListener('input', () => {
     specGain = parseFloat(gainSlider.value);

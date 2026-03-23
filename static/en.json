@@ -19,5 +19,7 @@
   "freq_range_label": "FREQ RANGE",
   "history_label": "History Download (MSEED)",
   "download_all_btn": "Download All (ZIP)",
-  "scale_label": "SCALE"
+  "scale_label": "SCALE",
+  "mode_label": "DISPLAY MODE",
+  "spectrum_window_label": "ANALYSIS WINDOW"
 }
