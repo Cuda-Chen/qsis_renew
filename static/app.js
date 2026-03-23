@@ -20,7 +20,7 @@ const Y_AXIS_WIDTH = 50;
 // Buffer sized for up to MAX_FS Hz to accommodate actual Phidget delivery rates.
 // Timestamp-based rendering positions each sample correctly regardless of buffer size.
 const MAX_FS = 200;  // max expected sample rate; must match server WAVEFORM_BUFFER_SIZE
-const BUFFER_SIZE = MAX_FS * SECONDS_TO_SHOW; // 12000 samples
+const BUFFER_SIZE = MAX_FS * 300; // 5 minutes representing 60,000 samples
 let waveX = new Float32Array(BUFFER_SIZE);
 let waveY = new Float32Array(BUFFER_SIZE);
 let waveZ = new Float32Array(BUFFER_SIZE);
@@ -32,8 +32,8 @@ let waveT = new Float64Array(BUFFER_SIZE); // epoch (Unix seconds) per sample
     const initNow = Date.now() / 1000.0;
     const INIT_DELAY = 2.0;
     for (let i = 0; i < waveT.length; i++) {
-        // Spread init timestamps evenly across 60 seconds, regardless of actual FS
-        waveT[i] = initNow - INIT_DELAY - (waveT.length - 1 - i) * (SECONDS_TO_SHOW / waveT.length);
+        // Spread init timestamps evenly across 5 minutes, regardless of actual FS
+        waveT[i] = initNow - INIT_DELAY - (waveT.length - 1 - i) * (300 / waveT.length);
     }
 }
 let scaleZ = 2.0;
@@ -41,8 +41,8 @@ let scaleN = 2.0;
 let scaleE = 2.0;
 
 // --- Spectrogram State ---
-// Let's store 60 rows, giving us 60 seconds of history updated every 1s, matching the Waveform SECONDS_TO_SHOW
-const SPEC_ROWS = 60;
+// Let's store 400 rows, giving us 400 seconds (6.5 hours) of history updated every 1s
+const SPEC_ROWS = 400;
 let specHistory = []; // array of {mags: Float32Array, epoch: number} objects
 let maxFreqBins = 0;
 
@@ -102,7 +102,17 @@ function connectWaveform() {
     wsWaveform.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.y && data.y.length > 0) {
-            const len = data.y.length;
+            let yData = data.y;
+            let len = yData.length;
+            
+            // --- SAFETY: Prevent buffer overflow if the backfill chunk is massive
+            if (len > BUFFER_SIZE) {
+                // Keep only the most recent BUFFER_SIZE samples
+                yData = yData.slice(len - BUFFER_SIZE);
+                len = BUFFER_SIZE;
+            }
+            // ---
+
             waveX.copyWithin(0, len);
             waveY.copyWithin(0, len);
             waveZ.copyWithin(0, len);
@@ -114,9 +124,9 @@ function connectWaveform() {
             const chunkEndEpoch = (data.t != null) ? data.t : (Date.now() / 1000.0 - WAVEFORM_DELAY);
             const dt = 1.0 / FS;
             for (let i = 0; i < len; i++) {
-                waveX[startIdx + i] = data.y[i][0];
-                waveY[startIdx + i] = data.y[i][1];
-                waveZ[startIdx + i] = data.y[i][2];
+                waveX[startIdx + i] = yData[i][0];
+                waveY[startIdx + i] = yData[i][1];
+                waveZ[startIdx + i] = yData[i][2];
                 waveT[startIdx + i] = chunkEndEpoch - (len - 1 - i) * dt;
             }
         }

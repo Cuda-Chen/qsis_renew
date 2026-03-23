@@ -73,10 +73,10 @@ class RingBuffer:
         else:
             return np.concatenate((self.buffer[self.head:], self.buffer[:self.head]))
 
-# We store 60 seconds of raw continuous data for history/downloading
+# We store 300 seconds (5 minutes) of raw continuous data for history/downloading and UI backfill.
 # Buffer sized for up to 200Hz to accommodate actual Phidget delivery rates
 # (sensor may fire faster than the configured DATA_INTERVAL_MS)
-WAVEFORM_BUFFER_SIZE = int(200 * 60)  # 12000 samples
+WAVEFORM_BUFFER_SIZE = int(200 * 300)  # 60,000 samples
 waveform_ring = RingBuffer(WAVEFORM_BUFFER_SIZE)
 data_lock = threading.Lock()
 
@@ -462,6 +462,23 @@ async def ws_waveform(websocket: WebSocket):
         # whatever is new in the buffer at the delay point.
         delay_samples = int(FS * 2.0)
         last_head = -1
+        
+        # --- Send Initial Backfill Payload ---
+        with data_lock:
+            all_data = waveform_ring.get_all()
+            if len(all_data) > delay_samples:
+                # Send everything up to the 2s delay point
+                initial_chunk = all_data[:-delay_samples]
+                initial_epoch = time.time() - (delay_samples / FS)
+                # Ensure we don't block the async event loop with json dumping
+                # But for this one-time payload, it's acceptable.
+                await websocket.send_text(json.dumps({
+                    "y": initial_chunk.tolist(),
+                    "t": initial_epoch
+                }))
+                
+                # set last_head so the regular loop picks up from the right spot
+                last_head = waveform_ring.head
         
         while True:
             await asyncio.sleep(UI_STREAM_MS / 1000.0)
