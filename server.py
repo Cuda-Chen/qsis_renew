@@ -88,7 +88,12 @@ archive_lock = threading.Lock()
 latest_spectrogram = None
 
 # Hardware metadata
+# Latest sensor metadata
 latest_sensor_id = None
+sample_count = 0
+actual_fs = 0.0
+last_fs_log = 0.0
+start_time = time.monotonic()
 
 # --- DSP ---
 class DSPProcessor:
@@ -130,19 +135,42 @@ def hardware_loop():
     ch = Accelerometer()
     
     def on_accel(self, acc, ts):
+        global sample_count, actual_fs, last_fs_log, start_time
+        
         processed = dsp.process(acc[0], acc[1], acc[2])
         with data_lock:
             waveform_ring.append(processed)
         with archive_lock:
             # Store raw (unprocessed) data in the archive
             archive_queue.append(acc)
+            
+        # Diagnostics: measure actual samplerate
+        sample_count += 1
+        now = time.monotonic()
+        elapsed = now - start_time
+        if elapsed > 1.0:
+            actual_fs = sample_count / elapsed
+            if now - last_fs_log > 10.0:
+                print(f"HW Status: FS={actual_fs:.1f}Hz, Samples={sample_count}")
+                last_fs_log = now
 
     ch.setOnAccelerationChangeHandler(on_accel)
+    
+    # Dynamic samplerate detection
+    global actual_fs
     
     try:
         ch.setIsLocal(True)
         ch.openWaitForAttachment(5000)
+        
+        # Verify requested interval is supported
         ch.setDataInterval(DATA_INTERVAL_MS)
+        actual_interval = ch.getDataInterval()
+        print(f"Hardware Loop: Requested {DATA_INTERVAL_MS}ms, Got {actual_interval}ms")
+        
+        # Initial estimate of FS
+        with data_lock:
+            actual_fs = 1000.0 / actual_interval
         
         # Capture the actual connected device serial number
         global latest_sensor_id
@@ -162,13 +190,7 @@ threading.Thread(target=hardware_loop, daemon=True).start()
 
 # --- Math Loop (Spectrogram) ---
 def math_loop():
-    global latest_spectrogram
-    window_samples = int(FS * FFT_WINDOW_SEC)
-    hanning_window = np.hanning(window_samples)
-    
-    # Create a Butterworth bandpass filter for the spectrogram magnitude 
-    # (magnitude operation introduces a DC offset and harmonics)
-    sos_spec = butter(4, [0.5, 49.9], btype='bandpass', fs=FS, output='sos')
+    global latest_spectrogram, actual_fs
     
     next_tick = time.monotonic() + SPECTRO_PUBLISH_RATE
     while True:
@@ -177,34 +199,39 @@ def math_loop():
         if sleep_duration > 0:
             time.sleep(sleep_duration)
         else:
-            # If we fall behind, reset timer to maintain alignment without bursting
             next_tick = now
             
         next_tick += SPECTRO_PUBLISH_RATE
+        
+        # Determine current samplerate
+        curr_fs = actual_fs if actual_fs > 0 else FS
+        window_samples = int(curr_fs * FFT_WINDOW_SEC)
+        hanning_window = np.hanning(window_samples)
         
         with data_lock:
             data_window = waveform_ring.get_window(window_samples)
             
         if data_window is not None:
-            # Calculate magnitude vector: sqrt(x^2 + y^2 + z^2)
-            mag_window = np.sqrt(np.sum(data_window**2, axis=1))
+            # Linear approach: FFT per axis
+            mags_sq_sum = np.zeros(window_samples // 2 + 1)
             
-            # Apply Butterworth filter to the magnitude envelope
-            mag_filtered = sosfiltfilt(sos_spec, mag_window)
+            for i in range(3):
+                windowed = data_window[:, i] * hanning_window
+                fft_vals = np.fft.rfft(windowed)
+                mags_sq_sum += np.abs(fft_vals)**2
             
-            # Calculate FFT on the filtered magnitude
-            windowed = mag_filtered * hanning_window
-            fft_vals = np.abs(np.fft.rfft(windowed)) / window_samples
-            freqs = np.fft.rfftfreq(window_samples, 1/FS)
+            # Root-Sum-Square (RSS) of magnitudes
+            combined_mags = np.sqrt(mags_sq_sum) / window_samples
             
-            # Filter freqs between 0.5 and 50.0 Hz
+            # Frequency vector based on ACTUAL FS
+            freqs = np.fft.rfftfreq(window_samples, 1/curr_fs)
+            
+            # Filter for UI (0.5 - 50.0 Hz)
             valid_idx = (freqs >= 0.5) & (freqs <= 50.0)
-            f_bins = freqs[valid_idx]
-            mags = fft_vals[valid_idx]
             
             latest_spectrogram = {
-                "freqs": f_bins.tolist(),
-                "mags": mags.tolist(),
+                "freqs": freqs[valid_idx].tolist(),
+                "mags": combined_mags[valid_idx].tolist(),
                 "epoch": time.time()
             }
 
@@ -243,7 +270,7 @@ def flush_archive(archive_dir, station_hex, next_start_time):
     }
     
     # Set record length and professional encoding (STEIM-2 for compressed integers)
-    reclen = 4096
+    reclen = 512
     encoding = "STEIM2"
 
     # Scale data to integers (g * 1e6) to preserve precision while enabling compression
