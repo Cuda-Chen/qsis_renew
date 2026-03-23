@@ -355,6 +355,14 @@
             <div style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Waveform Tools</div>
             
             <div class="sidebar-control" style="margin-bottom: 15px;">
+                <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
+                <div class="toggle-group">
+                    <button id="btnWaveLin" class="toggle-btn active">LIN</button>
+                    <button id="btnWaveLog" class="toggle-btn">LOG</button>
+                </div>
+            </div>
+
+            <div class="sidebar-control" style="margin-bottom: 15px;">
                 <label class="sidebar-label" data-i18n="wave_scale_label">WAVE SCALE</label>
                 <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
                     <div style="display: flex; flex-direction: column; align-items: center;">
@@ -511,6 +519,6 @@
     </div>
 
     <div id="hoverTooltip" class="hover-tooltip"></div>
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js?v=4"></script>
 </body>
 </html>

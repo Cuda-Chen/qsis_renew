@@ -56,6 +56,7 @@ let specMaxFreq = 50.0;
 let isSpectrumMode = false;
 let spectrumWindowSize = '2s'; // '2s' or '60s'
 let latestSpectrumData = null;
+let useWaveformLogScale = false;
 
 // Pre-compute a 256-entry rainbow LUT at startup
 // Gradient: dark purple (silence) → blue → cyan → green → yellow → orange → red (max)
@@ -220,7 +221,14 @@ function drawWaveform() {
             const x = width - (age - VIEW_DELAY) * pxPerSecond;
             // Skip samples outside the visible 60-second window
             if (x < 0 || x > width) continue;
-            const normalized = (buffer[i] / scale + 1) / 2;
+            
+            let val = buffer[i];
+            if (useWaveformLogScale) {
+                // Symmetric log transformation to compress peaks while keeping small vibrations linear
+                val = Math.sign(val) * Math.log10(1 + Math.abs(val) * 9);
+            }
+            
+            const normalized = (val / scale + 1) / 2;
             const y = height - (normalized * height);
             if (!started) { ctx.moveTo(x, y); started = true; }
             else ctx.lineTo(x, y);
@@ -583,6 +591,23 @@ btnLog.addEventListener('click', () => {
 });
 
 // --- Waveform Scale Controls ---
+const btnWaveLin = document.getElementById('btnWaveLin');
+const btnWaveLog = document.getElementById('btnWaveLog');
+
+if (btnWaveLin) {
+    btnWaveLin.addEventListener('click', () => {
+        useWaveformLogScale = false;
+        btnWaveLin.classList.add('active');
+        btnWaveLog.classList.remove('active');
+    });
+
+    btnWaveLog.addEventListener('click', () => {
+        useWaveformLogScale = true;
+        btnWaveLog.classList.add('active');
+        btnWaveLin.classList.remove('active');
+    });
+}
+
 const sliderZ = document.getElementById('scaleZ');
 const sliderN = document.getElementById('scaleN');
 const sliderE = document.getElementById('scaleE');
