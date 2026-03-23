@@ -12,7 +12,7 @@ let wsWaveform, wsSpectro;
 
 // Configuration
 const FS = 100; // 100Hz
-const SECONDS_TO_SHOW = 60;
+let SECONDS_TO_SHOW = 60;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
 const Y_AXIS_WIDTH = 50;
 
@@ -150,7 +150,9 @@ async function loadLanguage() {
         const config = await confRes.json();
         const lang = config.language || 'en';
 
-        const response = await fetch(`/static/${lang}.json`);
+        // Append a cache-busting timestamp to ensure the latest keys are pulled
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/static/${lang}.json?t=${timestamp}`);
         i18nDict = await response.json();
 
         // Update DOM elements that possess the data-i18n tag
@@ -518,6 +520,20 @@ const btnModeSpectrum = document.getElementById('btnModeSpectrum');
 const spectrumWindowControl = document.getElementById('spectrumWindowControl');
 const btnWin2s = document.getElementById('btnWin2s');
 const btnWin60s = document.getElementById('btnWin60s');
+
+const timeWindowSlider = document.getElementById('timeWindow');
+const valTimeWindow = document.getElementById('valTimeWindow');
+const lblTimeLeft = document.getElementById('lblTimeLeft');
+
+if (timeWindowSlider && valTimeWindow) {
+    timeWindowSlider.addEventListener('input', (e) => {
+        SECONDS_TO_SHOW = parseInt(e.target.value, 10);
+        valTimeWindow.textContent = SECONDS_TO_SHOW;
+        if (lblTimeLeft) {
+            lblTimeLeft.textContent = `T-${SECONDS_TO_SHOW}s`;
+        }
+    });
+}
 
 if (btnModeSpectrogram) {
     btnModeSpectrogram.addEventListener('click', () => {

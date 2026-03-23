@@ -21,5 +21,6 @@
   "download_all_btn": "Download All (ZIP)",
   "scale_label": "SCALE",
   "mode_label": "DISPLAY MODE",
-  "spectrum_window_label": "ANALYSIS WINDOW"
+  "spectrum_window_label": "ANALYSIS WINDOW",
+  "time_window_label": "TIME WINDOW"
 }

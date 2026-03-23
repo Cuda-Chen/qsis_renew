@@ -389,6 +389,14 @@
             <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Spectrogram Tools</div>
             
             <div class="sidebar-control" style="margin-bottom: 15px;">
+                <label class="sidebar-label" data-i18n="time_window_label">TIME WINDOW</label>
+                <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                    <span class="sidebar-value"><span id="valTimeWindow">60</span>s</span>
+                    <input type="range" id="timeWindow" min="10" max="60" step="1" value="60" style="width: 80%; accent-color: var(--accent-green);">
+                </div>
+            </div>
+
+            <div class="sidebar-control" style="margin-bottom: 15px;">
                 <label class="sidebar-label" data-i18n="mode_label">DISPLAY MODE</label>
                 <div class="toggle-group">
                     <button id="btnModeSpectrogram" class="toggle-btn active">SPECTROGRAM</button>
@@ -496,13 +504,13 @@
                 <div class="color-scale-label" style="top: 4px;">MAX</div>
                 <div class="color-scale-label" style="bottom: 20px;">MIN</div>
                 <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW (-2s)</div>
-                <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
+                <div id="lblTimeLeft" class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
                 <!-- Vertical Axis: Frequency -->
             </div>
         </div>
     </div>
 
     <div id="hoverTooltip" class="hover-tooltip"></div>
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/app.js?v=3"></script>
 </body>
 </html>

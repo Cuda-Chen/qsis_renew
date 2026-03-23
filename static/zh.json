@@ -21,5 +21,6 @@
   "download_all_btn": "下載全部 (ZIP)",
   "scale_label": "量程",
   "mode_label": "顯示模式",
-  "spectrum_window_label": "分析時間"
+  "spectrum_window_label": "分析時間",
+  "time_window_label": "時間長度"
 }
