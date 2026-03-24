@@ -144,7 +144,7 @@ function connectWaveform() {
             // Use real timestamp if server provides it; fall back to estimated 'now - 2s delay'
             const WAVEFORM_DELAY = 2.0;
             const chunkEndEpoch = (data.t != null) ? data.t : (Date.now() / 1000.0 - WAVEFORM_DELAY);
-            const dt = 1.0 / FS;
+            const dt = (data.fs && data.fs > 0) ? (1.0 / data.fs) : (1.0 / FS);
             for (let i = 0; i < len; i++) {
                 waveX[startIdx + i] = yData[i][0];
                 waveY[startIdx + i] = yData[i][1];
@@ -160,15 +160,34 @@ function connectWaveform() {
 function connectSpectro() {
     wsSpectro = new WebSocket(`${WEBSOCKET_URL}/ws/spectrogram`);
     wsSpectro.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.mags && data.epoch != null) {
-            maxFreqBins = data.mags.length;
-            const newRow = new Float32Array(data.mags);
-            specHistory.unshift({ mags: newRow, epoch: data.epoch });
-            if (specHistory.length > SPEC_ROWS) {
-                specHistory.pop();
+        const msg = JSON.parse(event.data);
+        
+        // If it's an array, it's the initial backfill history payload
+        if (Array.isArray(msg)) {
+            specHistory = [];
+            // Server sends oldest first, newest last. specHistory needs newest at index 0.
+            for (let i = msg.length - 1; i >= 0; i--) {
+                const data = msg[i];
+                if (data.mags && data.epoch != null) {
+                    maxFreqBins = data.mags.length;
+                    specHistory.push({ mags: new Float32Array(data.mags), epoch: data.epoch });
+                }
             }
-            latestSpectrumData = data;
+            if (msg.length > 0) {
+                latestSpectrumData = msg[msg.length - 1];
+            }
+        } else {
+            // Normal live update object
+            const data = msg;
+            if (data.mags && data.epoch != null) {
+                maxFreqBins = data.mags.length;
+                const newRow = new Float32Array(data.mags);
+                specHistory.unshift({ mags: newRow, epoch: data.epoch });
+                if (specHistory.length > SPEC_ROWS) {
+                    specHistory.pop();
+                }
+                latestSpectrumData = data;
+            }
         }
     };
 }
@@ -333,9 +352,9 @@ function drawSpectrogram() {
         const { mags: timeData, epoch } = specHistory[t];
         if (epoch == null) continue;
 
-        // Apply a 1.0 second leftward shift to align the visual rendering with the 
-        // true START of the 2-second FFT window, matching waveform onset.
-        const adjustedEpoch = epoch - 1.0;
+        // Align the visual rendering perfectly with the 
+        // true mathematical center of the 2-second Hanning FFT window.
+        const adjustedEpoch = epoch - 0.5;
         const age = nowSec - adjustedEpoch;
         
         // x = width - (age - VIEW_DELAY) * pxPerSecond  (same formula as waveform)

@@ -86,6 +86,7 @@ archive_lock = threading.Lock()
 
 # Latest spectrogram
 latest_spectrogram = None
+spectrogram_ring = deque(maxlen=300)
 
 # Hardware metadata
 # Latest sensor metadata
@@ -264,6 +265,8 @@ def math_loop():
                 "e_60s": welch_e,
                 "epoch": time.time()
             }
+            with data_lock:
+                spectrogram_ring.append(latest_spectrogram)
 
 threading.Thread(target=math_loop, daemon=True).start()
 
@@ -474,7 +477,8 @@ async def ws_waveform(websocket: WebSocket):
                 # But for this one-time payload, it's acceptable.
                 await websocket.send_text(json.dumps({
                     "y": initial_chunk.tolist(),
-                    "t": initial_epoch
+                    "t": initial_epoch,
+                    "fs": actual_fs
                 }))
                 
                 # set last_head so the regular loop picks up from the right spot
@@ -523,6 +527,23 @@ async def ws_waveform(websocket: WebSocket):
 async def ws_spectrogram(websocket: WebSocket):
     await websocket.accept()
     spectro_connections.add(websocket)
+    
+    with data_lock:
+        history = list(spectrogram_ring)
+        
+    if history:
+        # Strip heavy Welch PSD arrays from historical items to prevent JS thread freezing on parse
+        optimized_history = []
+        for i, row in enumerate(history):
+            if i == len(history) - 1:
+                optimized_history.append(row)
+            else:
+                optimized_history.append({
+                    "mags": row["mags"],
+                    "epoch": row["epoch"]
+                })
+        await websocket.send_text(json.dumps(optimized_history))
+        
     last_sent = None
     try:
         while True:
