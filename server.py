@@ -217,9 +217,9 @@ def math_loop():
             
         if data_window is not None:
             # Linear approach: FFT per axis for the 2s spectrogram
-            fft_z = np.fft.rfft(data_window[:, 0] * hanning_window)
+            fft_e = np.fft.rfft(data_window[:, 0] * hanning_window)
             fft_n = np.fft.rfft(data_window[:, 1] * hanning_window)
-            fft_e = np.fft.rfft(data_window[:, 2] * hanning_window)
+            fft_z = np.fft.rfft(data_window[:, 2] * hanning_window)
             
             # Root-Sum-Square (RSS) of magnitudes for spectrogram
             combined_mags = np.sqrt(np.abs(fft_z)**2 + np.abs(fft_n)**2 + np.abs(fft_e)**2) / window_samples
@@ -240,9 +240,9 @@ def math_loop():
             welch_z, welch_n, welch_e = [], [], []
             if data_window_60s is not None and len(data_window_60s) == window_samples_60s:
                 # nperseg is exactly 2 seconds, to match the spectrogram's resolution
-                f_welch, pxx_z = welch(data_window_60s[:, 0], fs=curr_fs, nperseg=window_samples)
+                f_welch, pxx_e = welch(data_window_60s[:, 0], fs=curr_fs, nperseg=window_samples)
                 _, pxx_n = welch(data_window_60s[:, 1], fs=curr_fs, nperseg=window_samples)
-                _, pxx_e = welch(data_window_60s[:, 2], fs=curr_fs, nperseg=window_samples)
+                _, pxx_z = welch(data_window_60s[:, 2], fs=curr_fs, nperseg=window_samples)
                 # Convert PSD from g^2/Hz to Gal^2/Hz, then take sqrt to get amplitude (pseudo-amplitude spectrum)
                 # Actually, standard amplitude spectrum from Welch is sqrt(PSD). We want Gal.
                 welch_z = (np.sqrt(pxx_z) * 980.0)[valid_idx].tolist()
