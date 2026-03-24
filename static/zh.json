@@ -22,5 +22,6 @@
   "scale_label": "量程",
   "mode_label": "顯示模式",
   "spectrum_window_label": "分析時間",
-  "time_window_label": "時間長度"
+  "time_window_label": "時間長度",
+  "theme_label": "主題"
 }

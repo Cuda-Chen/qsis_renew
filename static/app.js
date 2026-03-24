@@ -57,6 +57,28 @@ let isSpectrumMode = false;
 let spectrumWindowSize = '2s'; // '2s' or '60s'
 let latestSpectrumData = null;
 let useWaveformLogScale = false;
+let currentTheme = localStorage.getItem('theme') || 'dark';
+
+function applyTheme(theme) {
+    currentTheme = theme;
+    localStorage.setItem('theme', theme);
+    if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('btnThemeLight').classList.add('active');
+        document.getElementById('btnThemeDark').classList.remove('active');
+    } else {
+        document.body.classList.remove('light-mode');
+        document.getElementById('btnThemeDark').classList.add('active');
+        document.getElementById('btnThemeLight').classList.remove('active');
+    }
+}
+document.addEventListener('DOMContentLoaded', () => {
+    applyTheme(currentTheme);
+});
+
+function getThemeColor(varName) {
+    return getComputedStyle(document.body).getPropertyValue(varName).trim();
+}
 
 // Pre-compute a 256-entry rainbow LUT at startup
 // Gradient: dark purple (silence) → blue → cyan → green → yellow → orange → red (max)
@@ -204,12 +226,14 @@ function drawWaveform() {
     const width = canvasZ.width;
     const height = canvasZ.height;
 
+    const canvasBg = getThemeColor('--canvas-bg');
+
     // Clear Backgrounds
-    ctxZ.fillStyle = '#000000';
+    ctxZ.fillStyle = canvasBg;
     ctxZ.fillRect(0, 0, width, height);
-    ctxN.fillStyle = '#000000';
+    ctxN.fillStyle = canvasBg;
     ctxN.fillRect(0, 0, width, height);
-    ctxE.fillStyle = '#000000';
+    ctxE.fillStyle = canvasBg;
     ctxE.fillRect(0, 0, width, height);
 
     // Shared time-axis: x = width - (age - VIEW_DELAY) * pxPerSecond
@@ -284,7 +308,9 @@ function drawSpectrogram() {
     const rowHeight = height / visibleBins;
     const VIEW_DELAY = 2.0; // must match server.py delay_samples / FS
 
-    ctxSpec.fillStyle = '#000000';
+    const canvasBg = getThemeColor('--canvas-bg');
+
+    ctxSpec.fillStyle = canvasBg;
     ctxSpec.fillRect(0, 0, width, height);
 
     // Find absolute max for color normalization
@@ -339,7 +365,11 @@ function drawSpectrogram() {
     }
 
     // --- Draw Frequency Ticks & Gridlines ---
-    ctxSpec.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    const textSecondary = getThemeColor('--text-secondary');
+    const borderSemi = currentTheme === 'light' ? 'rgba(0,0,0,0.3)' : 'rgba(255, 255, 255, 0.5)';
+    const gridLine = getThemeColor('--grid-line');
+
+    ctxSpec.fillStyle = textSecondary;
     ctxSpec.font = '10px Courier New';
     ctxSpec.textAlign = 'left';
     ctxSpec.textBaseline = 'middle';
@@ -360,7 +390,7 @@ function drawSpectrogram() {
         const yPos = height - (percent * height);
 
         // Gridline (subtle)
-        ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctxSpec.strokeStyle = gridLine;
         ctxSpec.lineWidth = 1;
         ctxSpec.beginPath();
         ctxSpec.moveTo(Y_AXIS_WIDTH, yPos);
@@ -368,7 +398,7 @@ function drawSpectrogram() {
         ctxSpec.stroke();
 
         // Tick Mark
-        ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctxSpec.strokeStyle = borderSemi;
         ctxSpec.beginPath();
         ctxSpec.moveTo(Y_AXIS_WIDTH - 5, yPos);
         ctxSpec.lineTo(Y_AXIS_WIDTH, yPos);
@@ -388,8 +418,9 @@ function drawSpectrumPlot() {
 
     const width = spectroCanvas.width;
     const height = spectroCanvas.height;
+    const canvasBg = getThemeColor('--canvas-bg');
     
-    ctxSpec.fillStyle = '#000000';
+    ctxSpec.fillStyle = canvasBg;
     ctxSpec.fillRect(0, 0, width, height);
 
     const freqs = latestSpectrumData.freqs;
@@ -457,7 +488,11 @@ function drawSpectrumPlot() {
     drawLinePlot(eData, '#ef4444');
 
     // --- Draw Ticks & Gridlines ---
-    ctxSpec.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    const textSecondary = getThemeColor('--text-secondary');
+    const borderSemi = currentTheme === 'light' ? 'rgba(0,0,0,0.3)' : 'rgba(255, 255, 255, 0.5)';
+    const gridLine = getThemeColor('--grid-line');
+
+    ctxSpec.fillStyle = textSecondary;
     ctxSpec.font = '10px Courier New';
 
     // Y-axis ticks (Amplitude in Gal)
@@ -468,7 +503,7 @@ function drawSpectrumPlot() {
     ctxSpec.fillText(`0 Gal`, Y_AXIS_WIDTH - 5, height - 5);
 
     // Draw Y-axis line
-    ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctxSpec.strokeStyle = borderSemi;
     ctxSpec.lineWidth = 1;
     ctxSpec.beginPath();
     ctxSpec.moveTo(Y_AXIS_WIDTH, 0);
@@ -582,6 +617,10 @@ if (btnWin2s) {
         btnWin2s.classList.remove('active');
     });
 }
+
+// --- Theme Controls ---
+document.getElementById('btnThemeDark').addEventListener('click', () => applyTheme('dark'));
+document.getElementById('btnThemeLight').addEventListener('click', () => applyTheme('light'));
 
 gainSlider.addEventListener('input', () => {
     specGain = parseFloat(gainSlider.value);
