@@ -36,6 +36,15 @@ NTP=pool.ntp.org
 FallbackNTP=ntp.ubuntu.com
 ```
 
+For instance, sensors located in Taiwan can use the following settings:
+```text
+# Provided by https://www.stdtime.gov.tw/chinese/bulletin/NTP%20promo.txt
+
+[Time]
+NTP=tock.stdtime.gov.tw
+FallbackNTP=watch.stdtime.gov.tw time.stdtime.gov.tw clock.stdtime.gov.tw tick.stdtime.gov.tw
+```
+
 ### Start & Enable
 ```bash
 sudo systemctl restart systemd-timesyncd
