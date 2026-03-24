@@ -14,7 +14,7 @@ let wsWaveform, wsSpectro;
 const FS = 100; // 100Hz
 let SECONDS_TO_SHOW = 60;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
-const Y_AXIS_WIDTH = 50;
+const Y_AXIS_WIDTH = 90;
 
 // --- Waveform State ---
 // Buffer sized for up to MAX_FS Hz to accommodate actual Phidget delivery rates.
@@ -521,9 +521,9 @@ function drawSpectrumPlot() {
     // Y-axis ticks (Amplitude in Gal)
     ctxSpec.textAlign = 'right';
     ctxSpec.textBaseline = 'top';
-    ctxSpec.fillText(`${maxDisplayGal.toFixed(2)} Gal`, Y_AXIS_WIDTH - 5, 5);
+    ctxSpec.fillText(`${maxDisplayGal.toFixed(2)} (gal/s^2)^2/Hz`, Y_AXIS_WIDTH - 5, 5);
     ctxSpec.textBaseline = 'bottom';
-    ctxSpec.fillText(`0 Gal`, Y_AXIS_WIDTH - 5, height - 5);
+    ctxSpec.fillText(`0 (gal/s^2)^2/Hz`, Y_AXIS_WIDTH - 5, height - 5);
 
     // Draw Y-axis line
     ctxSpec.strokeStyle = borderSemi;
