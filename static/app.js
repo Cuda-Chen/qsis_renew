@@ -14,7 +14,7 @@ let wsWaveform, wsSpectro;
 const FS = 100; // 100Hz
 let SECONDS_TO_SHOW = 60;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
-const Y_AXIS_WIDTH = 90;
+const Y_AXIS_WIDTH = 60;
 
 // --- Waveform State ---
 // Buffer sized for up to MAX_FS Hz to accommodate actual Phidget delivery rates.
@@ -443,6 +443,10 @@ function drawSpectrumPlot() {
     const height = spectroCanvas.height;
     const canvasBg = getThemeColor('--canvas-bg');
     
+    // Dedicate the bottom 22 physical pixels entirely to the X-Axis labels to prevent tracing overlap
+    const X_AXIS_HEIGHT = 22;
+    const plotHeight = height - X_AXIS_HEIGHT;
+    
     ctxSpec.fillStyle = canvasBg;
     ctxSpec.fillRect(0, 0, width, height);
 
@@ -489,9 +493,9 @@ function drawSpectrumPlot() {
             let py;
             if (useLogScale) {
                 const logVal = Math.max(0, Math.log10(1 + (amp / maxDisplayGal) * 9));
-                py = height - (height * logVal);
+                py = plotHeight - (plotHeight * logVal);
             } else {
-                py = height - (height * (amp / maxDisplayGal));
+                py = plotHeight - (plotHeight * (amp / maxDisplayGal));
             }
             if (py < 0) py = 0; // clamp to top of canvas
 
@@ -516,21 +520,36 @@ function drawSpectrumPlot() {
     const gridLine = getThemeColor('--grid-line');
 
     ctxSpec.fillStyle = textSecondary;
-    ctxSpec.font = '10px Courier New';
+    ctxSpec.font = '13px Courier New';
 
-    // Y-axis ticks (Amplitude in Gal)
+    // Y-axis tick values
     ctxSpec.textAlign = 'right';
     ctxSpec.textBaseline = 'top';
-    ctxSpec.fillText(`${maxDisplayGal.toFixed(2)} (gal/s^2)^2/Hz`, Y_AXIS_WIDTH - 5, 5);
+    ctxSpec.fillText(`${maxDisplayGal.toFixed(2)}`, Y_AXIS_WIDTH - 5, 5);
     ctxSpec.textBaseline = 'bottom';
-    ctxSpec.fillText(`0 (gal/s^2)^2/Hz`, Y_AXIS_WIDTH - 5, height - 5);
+    ctxSpec.fillText(`0`, Y_AXIS_WIDTH - 5, plotHeight);
+
+    // Rotate canvas context to draw the long unit string sideways
+    ctxSpec.save();
+    ctxSpec.translate(15, plotHeight / 2);
+    ctxSpec.rotate(-Math.PI / 2);
+    ctxSpec.textAlign = 'center';
+    ctxSpec.textBaseline = 'middle';
+    ctxSpec.fillText(`(gal/s^2)^2/Hz`, 0, 0);
+    ctxSpec.restore();
 
     // Draw Y-axis line
     ctxSpec.strokeStyle = borderSemi;
     ctxSpec.lineWidth = 1;
     ctxSpec.beginPath();
     ctxSpec.moveTo(Y_AXIS_WIDTH, 0);
-    ctxSpec.lineTo(Y_AXIS_WIDTH, height);
+    ctxSpec.lineTo(Y_AXIS_WIDTH, plotHeight);
+    ctxSpec.stroke();
+
+    // Draw X-axis boundary line to protect text margin
+    ctxSpec.beginPath();
+    ctxSpec.moveTo(Y_AXIS_WIDTH, plotHeight);
+    ctxSpec.lineTo(width, plotHeight);
     ctxSpec.stroke();
 
     // X-axis ticks (Frequency)
@@ -545,13 +564,22 @@ function drawSpectrumPlot() {
     for (let f = startTick; f <= specMaxFreq; f += interval) {
         const px = Y_AXIS_WIDTH + ((f - specMinFreq) / delta) * (width - Y_AXIS_WIDTH);
         
+        // Vertical grid line
         ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.15)';
         ctxSpec.beginPath();
         ctxSpec.moveTo(px, 0);
-        ctxSpec.lineTo(px, height);
+        ctxSpec.lineTo(px, plotHeight);
         ctxSpec.stroke();
         
-        ctxSpec.fillText(`${f}Hz`, px, height - 5);
+        // Tick mark descending visually into the text margin
+        ctxSpec.strokeStyle = borderSemi;
+        ctxSpec.beginPath();
+        ctxSpec.moveTo(px, plotHeight);
+        ctxSpec.lineTo(px, plotHeight + 5);
+        ctxSpec.stroke();
+        
+        // Label text safely isolated inside the margin bounds
+        ctxSpec.fillText(`${f}Hz`, px, height - 3);
     }
 }
 
