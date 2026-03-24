@@ -3,7 +3,7 @@
 For professional seismic monitoring, the **System Clock** is the absolute source of truth. You must ensure your host operating system is synchronized with an NTP server *before* launching the QSIS dashboard.
 
 ## 1. Recommended Setup: Chrony
-`chrony` is the industry standard for high-precision time synchronization on Linux.
+`chrony` is the recommended industry standard for high-precision time synchronization on Linux, especially for seismic data acquisition.
 
 ### Installation
 ```bash
@@ -25,14 +25,31 @@ sudo systemctl restart chrony
 sudo systemctl enable chrony
 ```
 
-## 2. Verification (Pre-launch)
-Before running `server.py`, verify the sync status:
+## 2. Alternative Setup: systemd-timesyncd
+For lightweight deployments or when `chrony` is not available, `systemd-timesyncd` provides a built-in NTP client on systemd-based systems.
+
+### Configuration
+Edit `/etc/systemd/timesyncd.conf` to configure your pool:
+```text
+[Time]
+NTP=pool.ntp.org
+FallbackNTP=ntp.ubuntu.com
+```
+
+### Start & Enable
+```bash
+sudo systemctl restart systemd-timesyncd
+sudo systemctl enable systemd-timesyncd
+```
+
+## 3. Verification (Pre-launch)
+Before running `server.py`, verify that your Chosen NTP service is actually syncing:
 ```bash
 timedatectl status
 ```
 Ensure `System clock synchronized: yes` and `NTP service: active`.
 
-## 3. How the Dashboard Monitors Time
+## 4. How the Dashboard Monitors Time
 The QSIS dashboard automatically monitors your system's NTP health:
 1. **API Check**: The backend periodically runs a lightweight system check.
 2. **UI Indicator**: A status dot in the header shows the health of your clock sync.
