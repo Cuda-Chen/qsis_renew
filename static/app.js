@@ -306,6 +306,36 @@ function drawWaveform() {
 }
 
 // --- Render Loop (Spectrogram or Spectrum) ---
+function getSpecY(f, specMinFreq, specMaxFreq, height, useLogScale) {
+    if (useLogScale) {
+        // Clamp to avoid log10(0)
+        const clampF = Math.max(0.1, f);
+        const logF = Math.log10(clampF);
+        const logMin = Math.log10(Math.max(0.1, specMinFreq));
+        const logMax = Math.log10(Math.max(0.1, specMaxFreq));
+        const percent = (logF - logMin) / (logMax - logMin);
+        return height - (percent * height);
+    } else {
+        const percent = (f - specMinFreq) / (specMaxFreq - specMinFreq);
+        return height - (percent * height);
+    }
+}
+
+function getSpecX(f, specMinFreq, specMaxFreq, width, useLogScale) {
+    const plotWidth = width - Y_AXIS_WIDTH;
+    if (useLogScale) {
+        const clampF = Math.max(0.1, f);
+        const logF = Math.log10(clampF);
+        const logMin = Math.log10(Math.max(0.1, specMinFreq));
+        const logMax = Math.log10(Math.max(0.1, specMaxFreq));
+        const percent = (logF - logMin) / (logMax - logMin);
+        return Y_AXIS_WIDTH + (percent * plotWidth);
+    } else {
+        const percent = (f - specMinFreq) / (specMaxFreq - specMinFreq);
+        return Y_AXIS_WIDTH + (percent * plotWidth);
+    }
+}
+
 function drawSpectrogram() {
     if (isSpectrumMode) {
         drawSpectrumPlot();
@@ -378,11 +408,23 @@ function drawSpectrogram() {
             const lutIdx = Math.min(255, Math.floor(mag * 255));
             ctxSpec.fillStyle = RAINBOW_LUT[lutIdx];
 
-            const yPos = height - ((i + 1) * rowHeight);
+            // Calculate the true frequency boundaries for this bin
+            // Resolution is 0.5Hz per bin
+            const f_start = specMinFreq + i * 0.5;
+            const f_end = specMinFreq + (i + 1) * 0.5;
+
+            // Invert the Y logic: higher frequency is smaller Y coordinate
+            const yBottom = getSpecY(f_start, specMinFreq, specMaxFreq, height, useLogScale);
+            const yTop = getSpecY(f_end, specMinFreq, specMaxFreq, height, useLogScale);
 
             const drawX = Math.floor(Math.max(xPos, Y_AXIS_WIDTH));
             if (drawX < width) {
-                ctxSpec.fillRect(drawX, Math.floor(yPos), Math.ceil(pxPerSecond) + 1, Math.ceil(rowHeight));
+                // Ensure floating point values overlap perfectly without bleeding or rendering gaps
+                const yDraw = Math.floor(yTop);
+                // Math.ceil the difference to absolutely fill the fractional sub-pixel gap bounds
+                const hDraw = Math.ceil(yBottom - yDraw);
+                
+                ctxSpec.fillRect(drawX, yDraw, Math.ceil(pxPerSecond) + 1, hDraw + 1);
             }
         }
     }
@@ -398,19 +440,25 @@ function drawSpectrogram() {
     ctxSpec.textBaseline = 'middle';
 
     const delta = specMaxFreq - specMinFreq;
-    let interval = 5;
-    if (delta <= 10) interval = 1;
-    else if (delta <= 20) interval = 2;
+    let ticks = [];
 
-    const ticks = [];
-    let startTick = Math.ceil(specMinFreq / interval) * interval;
-    for (let f = startTick; f <= specMaxFreq; f += interval) {
-        ticks.push(f);
+    if (useLogScale) {
+        // Generate nice exponential ticks strictly fitting inside display bounds
+        const logTicks = [0.5, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+        ticks = logTicks.filter(t => t >= specMinFreq && t <= specMaxFreq);
+    } else {
+        let interval = 5;
+        if (delta <= 10) interval = 1;
+        else if (delta <= 20) interval = 2;
+
+        let startTick = Math.ceil(specMinFreq / interval) * interval;
+        for (let f = startTick; f <= specMaxFreq; f += interval) {
+            ticks.push(f);
+        }
     }
 
     ticks.forEach(f => {
-        const percent = (f - specMinFreq) / (specMaxFreq - specMinFreq);
-        const yPos = height - (percent * height);
+        const yPos = getSpecY(f, specMinFreq, specMaxFreq, height, useLogScale);
 
         // Gridline (subtle)
         ctxSpec.strokeStyle = gridLine;
@@ -555,14 +603,25 @@ function drawSpectrumPlot() {
     // X-axis ticks (Frequency)
     ctxSpec.textAlign = 'center';
     ctxSpec.textBaseline = 'bottom';
-    const delta = specMaxFreq - specMinFreq;
-    let interval = 5;
-    if (delta <= 10) interval = 1;
-    else if (delta <= 20) interval = 2;
+    
+    let ticks = [];
+    if (useLogScale) {
+        const logTicks = [0.5, 1, 2, 3, 4, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+        ticks = logTicks.filter(t => t >= specMinFreq && t <= specMaxFreq);
+    } else {
+        const delta = specMaxFreq - specMinFreq;
+        let interval = 5;
+        if (delta <= 10) interval = 1;
+        else if (delta <= 20) interval = 2;
 
-    let startTick = Math.ceil(specMinFreq / interval) * interval;
-    for (let f = startTick; f <= specMaxFreq; f += interval) {
-        const px = Y_AXIS_WIDTH + ((f - specMinFreq) / delta) * (width - Y_AXIS_WIDTH);
+        let startTick = Math.ceil(specMinFreq / interval) * interval;
+        for (let f = startTick; f <= specMaxFreq; f += interval) {
+            ticks.push(f);
+        }
+    }
+
+    ticks.forEach(f => {
+        const px = getSpecX(f, specMinFreq, specMaxFreq, width, useLogScale);
         
         // Vertical grid line
         ctxSpec.strokeStyle = 'rgba(255, 255, 255, 0.15)';
@@ -580,7 +639,7 @@ function drawSpectrumPlot() {
         
         // Label text safely isolated inside the margin bounds
         ctxSpec.fillText(`${f}Hz`, px, height - 3);
-    }
+    });
 }
 
 // Start everything
