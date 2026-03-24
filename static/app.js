@@ -258,8 +258,12 @@ function drawWaveform() {
             
             let val = buffer[i];
             if (useWaveformLogScale) {
-                // Symmetric log transformation to compress peaks while keeping small vibrations linear
-                val = Math.sign(val) * Math.log10(1 + Math.abs(val) * 9);
+                // 1. Normalize the magnitude dynamically against the user-chosen slider 'scale'
+                const magnitude = Math.abs(val) / scale;
+                // 2. Compress the normalized magnitude. Math.log10(1 + x*9) maps [0, 1] to [0, 1]
+                const logMagnitude = Math.log10(1 + magnitude * 9);
+                // 3. Restore the original sign and multiply it back out to match the linear scale domain
+                val = Math.sign(val) * logMagnitude * scale;
             }
             
             const normalized = (val / scale + 1) / 2;
