@@ -43,6 +43,7 @@ For instance, sensors located in Taiwan can use the following settings:
 [Time]
 NTP=tock.stdtime.gov.tw
 FallbackNTP=watch.stdtime.gov.tw time.stdtime.gov.tw clock.stdtime.gov.tw tick.stdtime.gov.tw
+MaxOffsetSec=300 # sync period no more than 300 seconds
 ```
 
 ### Start & Enable
