@@ -59,6 +59,13 @@ let latestSpectrumData = null;
 let useWaveformLogScale = false;
 let currentTheme = localStorage.getItem('theme') || 'dark';
 
+// --- Row Display Modes ---
+let rowModes = {
+    'Z': 'spec',
+    'N': 'wave',
+    'E': 'wave'
+};
+
 function applyTheme(theme) {
     currentTheme = theme;
     localStorage.setItem('theme', theme);
@@ -557,10 +564,10 @@ function drawSpectrumPlot() {
         ctxSpec.stroke();
     }
 
-    // Draw Z (Blue), N (Green), E (Red)
-    drawLinePlot(zData, '#3b82f6');
-    drawLinePlot(nData, '#10b981');
-    drawLinePlot(eData, '#ef4444');
+    // Draw Z (Blue), N (Green), E (Red) only if toggled to SPEC mode
+    if (rowModes['Z'] === 'spec') drawLinePlot(zData, '#3b82f6');
+    if (rowModes['N'] === 'spec') drawLinePlot(nData, '#10b981');
+    if (rowModes['E'] === 'spec') drawLinePlot(eData, '#ef4444');
 
     // --- Draw Ticks & Gridlines ---
     const textSecondary = getThemeColor('--text-secondary');
@@ -798,6 +805,20 @@ sliderE.addEventListener('input', () => {
     valE.textContent = s;
     rEt.textContent = '+' + s + 'g';
     rEb.textContent = '-' + s + 'g';
+});
+
+// --- Row Toggle Event Listeners ---
+document.querySelectorAll('.row-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const channel = btn.getAttribute('data-channel');
+        
+        // Toggle the active state on the button
+        btn.classList.toggle('active');
+        const isActive = btn.classList.contains('active');
+        
+        // Update selection state for bottom panel filtering
+        rowModes[channel] = isActive ? 'spec' : 'wave';
+    });
 });
 
 // --- Spectrogram Frequency Range Controls ---

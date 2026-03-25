@@ -342,6 +342,33 @@
             border-color: #475569;
         }
 
+        .row-toggles {
+            position: absolute;
+            top: 5px;
+            right: 65px;
+            display: flex;
+            gap: 2px;
+            z-index: 20;
+        }
+
+        .row-toggle {
+            padding: 2px 6px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.2);
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.1s ease;
+        }
+
+        .row-toggle.active {
+            background: var(--accent-green);
+            color: var(--bg-dark);
+            border-color: var(--accent-green);
+        }
+
         .color-scale {
             width: 12px;
             height: 100%;
@@ -513,6 +540,9 @@
                     <div class="clip-zone top"></div>
                     <div class="clip-zone bottom"></div>
                     <div class="axis-label" style="top: 5px; left: 10px; color: #3b82f6; font-weight: 700;" data-i18n="axis_z">Z</div>
+                    <div class="row-toggles">
+                        <button class="row-toggle active" data-channel="Z">SPEC</button>
+                    </div>
                     <div class="range-label" style="top: 4px;" id="rangeZTop">+2.0g</div>
                     <div class="range-label" style="bottom: 4px;" id="rangeZBottom">-2.0g</div>
                     <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW</div>
@@ -525,6 +555,9 @@
                     <div class="clip-zone top"></div>
                     <div class="clip-zone bottom"></div>
                     <div class="axis-label" style="top: 5px; left: 10px; color: #10b981; font-weight: 700;" data-i18n="axis_n">N</div>
+                    <div class="row-toggles">
+                        <button class="row-toggle" data-channel="N">SPEC</button>
+                    </div>
                     <div class="range-label" style="top: 4px;" id="rangeNTop">+2.0g</div>
                     <div class="range-label" style="bottom: 4px;" id="rangeNBottom">-2.0g</div>
                 </div>
@@ -536,6 +569,9 @@
                     <div class="clip-zone top"></div>
                     <div class="clip-zone bottom"></div>
                     <div class="axis-label" style="top: 5px; left: 10px; color: #ef4444; font-weight: 700;" data-i18n="axis_e">E</div>
+                    <div class="row-toggles">
+                        <button class="row-toggle" data-channel="E">SPEC</button>
+                    </div>
                     <div class="range-label" style="top: 4px;" id="rangeETop">+2.0g</div>
                     <div class="range-label" style="bottom: 4px;" id="rangeEBottom">-2.0g</div>
                     <div class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
