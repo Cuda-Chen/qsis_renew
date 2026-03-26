@@ -254,9 +254,17 @@ def math_loop():
                 welch_n = gal_n[valid_idx].tolist()
                 welch_e = gal_e[valid_idx].tolist()
             
+            # Per-component magnitudes for selective spectrogram rendering
+            mags_z = (np.abs(fft_z) / window_samples)[valid_idx].tolist()
+            mags_n = (np.abs(fft_n) / window_samples)[valid_idx].tolist()
+            mags_e = (np.abs(fft_e) / window_samples)[valid_idx].tolist()
+            
             latest_spectrogram = {
                 "freqs": freqs[valid_idx].tolist(),
                 "mags": combined_mags[valid_idx].tolist(),
+                "mags_z": mags_z,
+                "mags_n": mags_n,
+                "mags_e": mags_e,
                 "z_2s": gal_z[valid_idx].tolist(),
                 "n_2s": gal_n[valid_idx].tolist(),
                 "e_2s": gal_e[valid_idx].tolist(),
@@ -538,10 +546,16 @@ async def ws_spectrogram(websocket: WebSocket):
             if i == len(history) - 1:
                 optimized_history.append(row)
             else:
-                optimized_history.append({
+                # Include per-component mags for selective spectrogram rendering
+                entry = {
                     "mags": row["mags"],
                     "epoch": row["epoch"]
-                })
+                }
+                if "mags_z" in row:
+                    entry["mags_z"] = row["mags_z"]
+                    entry["mags_n"] = row["mags_n"]
+                    entry["mags_e"] = row["mags_e"]
+                optimized_history.append(entry)
         await websocket.send_text(json.dumps(optimized_history))
         
     last_sent = None

@@ -177,7 +177,13 @@ function connectSpectro() {
                 const data = msg[i];
                 if (data.mags && data.epoch != null) {
                     maxFreqBins = data.mags.length;
-                    specHistory.push({ mags: new Float32Array(data.mags), epoch: data.epoch });
+                    const entry = { mags: new Float32Array(data.mags), epoch: data.epoch };
+                    if (data.mags_z) {
+                        entry.mags_z = new Float32Array(data.mags_z);
+                        entry.mags_n = new Float32Array(data.mags_n);
+                        entry.mags_e = new Float32Array(data.mags_e);
+                    }
+                    specHistory.push(entry);
                 }
             }
             if (msg.length > 0) {
@@ -188,8 +194,13 @@ function connectSpectro() {
             const data = msg;
             if (data.mags && data.epoch != null) {
                 maxFreqBins = data.mags.length;
-                const newRow = new Float32Array(data.mags);
-                specHistory.unshift({ mags: newRow, epoch: data.epoch });
+                const newRow = { mags: new Float32Array(data.mags), epoch: data.epoch };
+                if (data.mags_z) {
+                    newRow.mags_z = new Float32Array(data.mags_z);
+                    newRow.mags_n = new Float32Array(data.mags_n);
+                    newRow.mags_e = new Float32Array(data.mags_e);
+                }
+                specHistory.unshift(newRow);
                 if (specHistory.length > SPEC_ROWS) {
                     specHistory.pop();
                 }
@@ -373,12 +384,28 @@ function drawSpectrogram() {
     ctxSpec.fillStyle = canvasBg;
     ctxSpec.fillRect(0, 0, width, height);
 
-    // Find absolute max for color normalization
+    // Find absolute max for color normalization (considering toggled channels)
+    const useZ = rowModes['Z'] === 'spec';
+    const useN = rowModes['N'] === 'spec';
+    const useE = rowModes['E'] === 'spec';
+    
     let globalMax = 0.0001;
     for (let r = 0; r < specHistory.length; r++) {
-        const row = specHistory[r].mags;
-        for (let c = 0; c < maxFreqBins; c++) {
-            if (row[c] > globalMax) globalMax = row[c];
+        const row = specHistory[r];
+        const hasPerComp = row.mags_z != null;
+        if (hasPerComp && (useZ || useN || useE)) {
+            for (let c = 0; c < maxFreqBins; c++) {
+                let sum = 0;
+                if (useZ) sum += row.mags_z[c] ** 2;
+                if (useN) sum += row.mags_n[c] ** 2;
+                if (useE) sum += row.mags_e[c] ** 2;
+                const v = Math.sqrt(sum);
+                if (v > globalMax) globalMax = v;
+            }
+        } else {
+            for (let c = 0; c < maxFreqBins; c++) {
+                if (row.mags[c] > globalMax) globalMax = row.mags[c];
+            }
         }
     }
 
@@ -386,12 +413,12 @@ function drawSpectrogram() {
     const nowSec = Date.now() / 1000.0;
 
     for (let t = 0; t < limit; t++) {
-        const { mags: timeData, epoch } = specHistory[t];
-        if (epoch == null) continue;
+        const row = specHistory[t];
+        if (row.epoch == null) continue;
 
         // Align the visual rendering perfectly with the 
         // true mathematical center of the 2-second Hanning FFT window.
-        const adjustedEpoch = epoch - 0.5;
+        const adjustedEpoch = row.epoch - 0.5;
         const age = nowSec - adjustedEpoch;
         
         // x = width - (age - VIEW_DELAY) * pxPerSecond  (same formula as waveform)
@@ -402,9 +429,26 @@ function drawSpectrogram() {
         if (xRight <= Y_AXIS_WIDTH) continue;
         if (xPos >= width) continue;
 
+        // Use per-component mags if available, RSS-combining only toggled channels
+        const hasPerComp = row.mags_z != null;
+        
         for (let i = 0; i < visibleBins; i++) {
             const fIdx = startBin + i;
-            let mag = (timeData[fIdx] / globalMax) * specGain;
+            
+            let rawMag;
+            if (hasPerComp && (useZ || useN || useE)) {
+                // RSS-combine only toggled channels
+                let sum = 0;
+                if (useZ) sum += row.mags_z[fIdx] ** 2;
+                if (useN) sum += row.mags_n[fIdx] ** 2;
+                if (useE) sum += row.mags_e[fIdx] ** 2;
+                rawMag = Math.sqrt(sum);
+            } else {
+                // Fallback to pre-combined RSS mags
+                rawMag = row.mags[fIdx];
+            }
+            
+            let mag = (rawMag / globalMax) * specGain;
             if (mag > 1) mag = 1;
             if (mag < 0) mag = 0;
 
