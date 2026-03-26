@@ -79,3 +79,11 @@ $ LD_LIBRARY_PATH=/usr/local/lib uv run uvicorn server:app --host 0.0.0.0 --port
 
 Once the server is running, simply open your favorite modern web browser and navigate to:
 `http://localhost:8000`
+
+## Helper commands
+
+### Count the Overlaps and Gaps
+
+```
+$ python -c "import obspy; st=obspy.read('mseed_archive/<file>'); st.print_gaps()"
+```
