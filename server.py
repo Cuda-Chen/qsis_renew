@@ -289,6 +289,12 @@ def flush_archive(archive_dir, station_hex, next_start_time):
     npts = len(data_to_write)
     if npts == 0:
         return next_start_time
+
+    # Use the measured sensor rate to avoid timestamp drift.
+    # The Phidget may deliver at ~110Hz while our nominal FS is 100Hz.
+    # Using FS=100 would advance next_start_time faster than real time,
+    # causing the gap-check to trigger and creating overlaps in the MiniSEED file.
+    curr_fs = actual_fs if actual_fs > 0 else FS
         
     now_utc = datetime.now(timezone.utc)
     
@@ -306,7 +312,7 @@ def flush_archive(archive_dir, station_hex, next_start_time):
         'station': station_hex, 
         'location': '', 
         'npts': npts, 
-        'sampling_rate': FS, 
+        'sampling_rate': curr_fs,
         'starttime': next_start_time
     }
     
@@ -332,8 +338,9 @@ def flush_archive(archive_dir, station_hex, next_start_time):
     with open(os.path.join(archive_dir, f"{station_hex}.TW..HLN.{year_str}.{jday_str}"), "ab") as f:
         Stream([trace_n]).write(f, format="MSEED", reclen=reclen, encoding=encoding)
         
-    # Return the incremented start time for contiguous subsequent blocks
-    return next_start_time + (npts / FS)
+    # Return the incremented start time for contiguous subsequent blocks.
+    # Use curr_fs (actual sensor rate) so the timestamp advances at the real data rate.
+    return next_start_time + (npts / curr_fs)
 
 def cleanup_old_archives(archive_dir, now_utc):
     cutoff_date = now_utc - timedelta(days=180)
