@@ -19,6 +19,17 @@ pool pool.ntp.org iburst
 # server 192.168.1.100 iburst
 ```
 
+For instance, sensors located in Taiwan can use the following settings:
+```text
+# Provided by https://www.stdtime.gov.tw/chinese/bulletin/NTP%20promo.txt
+
+server tock.stdtime.gov.tw iburst
+server watch.stdtime.gov.tw iburst
+server time.stdtime.gov.tw iburst
+server clock.stdtime.gov.tw iburst
+server tick.stdtime.gov.tw iburst
+```
+
 ### Start & Enable
 ```bash
 sudo systemctl restart chrony
