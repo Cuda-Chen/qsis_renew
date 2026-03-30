@@ -166,6 +166,8 @@ function connectWaveform() {
 
 function connectSpectro() {
     wsSpectro = new WebSocket(`${WEBSOCKET_URL}/ws/spectrogram`);
+    wsSpectro.onclose = () => { setTimeout(connectSpectro, 1000); };
+    wsSpectro.onerror = () => { wsSpectro.close(); };
     wsSpectro.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         

@@ -71,7 +71,7 @@ To run the local server, you must pass the `LD_LIBRARY_PATH` so Python can link 
 
 ```bash
 # Run the FastAPI server via Uvicorn on Port 8000
-$ LD_LIBRARY_PATH=/usr/local/lib uv run uvicorn server:app --host 0.0.0.0 --port 8000
+$ LD_LIBRARY_PATH=/usr/local/lib uv run uvicorn server:app --host 0.0.0.0 --port 8000 --ws-ping-interval 20 --ws-ping-timeout 20
 ```
 *(Optionally append `--reload` for local hot-reloading development).*
 
@@ -91,7 +91,7 @@ $ crontab -e
 
 ### Add the Following Line
 ```cron
-@reboot cd /home/<user-account-name>/python_code/qsis_renew && LD_LIBRARY_PATH=/usr/local/lib /home/<user-account-name>/.local/bin/uv run uvicorn server:app --host 0.0.0.0 --port 8000 >> /tmp/qsis.log 2>&1
+@reboot cd /home/<user-account-name>/python_code/qsis_renew && LD_LIBRARY_PATH=/usr/local/lib /home/<user-account-name>/.local/bin/uv run uvicorn server:app --host 0.0.0.0 --port 8000 --ws-ping-interval 20 --ws-ping-timeout 20 >> /tmp/qsis.log 2>&1
 ```
 
 > **Note:** Adjust the paths above (`cd ...`, `/home/.../uv`) to match your actual deployment environment.
