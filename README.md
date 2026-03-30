@@ -80,6 +80,56 @@ $ LD_LIBRARY_PATH=/usr/local/lib uv run uvicorn server:app --host 0.0.0.0 --port
 Once the server is running, simply open your favorite modern web browser and navigate to:
 `http://localhost:8000`
 
+## 5. Auto-Start on Boot (Cron)
+
+To automatically launch the QSIS server when the system boots, add a `@reboot` entry to your crontab:
+
+### Edit the Crontab
+```bash
+$ crontab -e
+```
+
+### Add the Following Line
+```cron
+@reboot cd /home/<user-account-name>/python_code/qsis_renew && LD_LIBRARY_PATH=/usr/local/lib /home/<user-account-name>/.local/bin/uv run uvicorn server:app --host 0.0.0.0 --port 8000 >> /tmp/qsis.log 2>&1
+```
+
+> **Note:** Adjust the paths above (`cd ...`, `/home/.../uv`) to match your actual deployment environment.
+
+### Verify
+After a reboot, check that the server is running:
+```bash
+# Check the process
+$ ps aux | grep uvicorn
+
+# Check the startup log
+$ tail -f /tmp/qsis.log
+```
+
+### Remove
+To disable the auto-start, edit the crontab again and delete or comment out the `@reboot` line:
+```bash
+$ crontab -e
+```
+
+### Log Rotation
+To prevent `/tmp/qsis.log` from growing indefinitely, add a daily rotation job to your crontab (no root required):
+
+```bash
+$ crontab -e
+```
+
+Add this line alongside the existing `@reboot` entry:
+```cron
+0 0 * * * cd /tmp && cp qsis.log qsis.log.1 && : > qsis.log && gzip -f qsis.log.1 && find . -name 'qsis.log.*.gz' -mtime +7 -delete
+```
+
+This runs daily at midnight and:
+1. Copies the current log to `qsis.log.1`
+2. Truncates the active log (the running server keeps writing without interruption)
+3. Compresses the backup with gzip
+4. Deletes rotated logs older than 7 days
+
 ## Helper commands
 
 ### Count the Overlaps and Gaps
