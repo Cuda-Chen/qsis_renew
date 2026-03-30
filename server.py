@@ -482,22 +482,23 @@ async def ws_waveform(websocket: WebSocket):
         last_head = -1
         
         # --- Send Initial Backfill Payload ---
+        # Copy data and release the lock BEFORE serialization and sending.
+        # Holding data_lock during .tolist() + json.dumps + network I/O blocks
+        # the hardware loop (on_accel) for 150ms+ from remote clients, causing
+        # sample loss and cascading freezes for all connected clients.
         with data_lock:
-            all_data = waveform_ring.get_all()
-            if len(all_data) > delay_samples:
-                # Send everything up to the 2s delay point
-                initial_chunk = all_data[:-delay_samples]
-                initial_epoch = time.time() - (delay_samples / FS)
-                # Ensure we don't block the async event loop with json dumping
-                # But for this one-time payload, it's acceptable.
-                await websocket.send_text(json.dumps({
-                    "y": initial_chunk.tolist(),
-                    "t": initial_epoch,
-                    "fs": actual_fs
-                }))
-                
-                # set last_head so the regular loop picks up from the right spot
-                last_head = waveform_ring.head
+            all_data = waveform_ring.get_all()   # fast numpy copy
+            captured_head = waveform_ring.head
+        # Lock released — safe to do slow work below
+        if len(all_data) > delay_samples:
+            initial_chunk = all_data[:-delay_samples]
+            initial_epoch = time.time() - (delay_samples / FS)
+            await websocket.send_text(json.dumps({
+                "y": initial_chunk.tolist(),
+                "t": initial_epoch,
+                "fs": actual_fs
+            }))
+            last_head = captured_head
         
         while True:
             await asyncio.sleep(UI_STREAM_MS / 1000.0)
@@ -535,7 +536,11 @@ async def ws_waveform(websocket: WebSocket):
                     await websocket.send_text(json.dumps({"y": chunk.tolist(), "t": chunk_epoch}))
                     
     except WebSocketDisconnect:
-        waveform_connections.remove(websocket)
+        pass
+    except Exception as e:
+        print(f"Waveform WS error: {e}")
+    finally:
+        waveform_connections.discard(websocket)
 
 
 @app.websocket("/ws/spectrogram")
@@ -573,4 +578,8 @@ async def ws_spectrogram(websocket: WebSocket):
                 await websocket.send_text(json.dumps(latest_spectrogram))
                 last_sent = latest_spectrogram
     except WebSocketDisconnect:
-        spectro_connections.remove(websocket)
+        pass
+    except Exception as e:
+        print(f"Spectrogram WS error: {e}")
+    finally:
+        spectro_connections.discard(websocket)
