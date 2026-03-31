@@ -189,13 +189,6 @@ function connectSpectro() {
         
         // If it's an array, it's the initial backfill history payload
         if (Array.isArray(msg)) {
-            if (msg.length > 0) {
-                const latest = msg[msg.length - 1];
-                if (latest.epoch) {
-                    latestServerTime = latest.epoch;
-                    localTimeAtReceive = Date.now() / 1000.0;
-                }
-            }
             specHistory = [];
             // Server sends oldest first, newest last. specHistory needs newest at index 0.
             for (let i = msg.length - 1; i >= 0; i--) {
@@ -218,9 +211,6 @@ function connectSpectro() {
             // Normal live update object
             const data = msg;
             if (data.mags && data.epoch != null) {
-                latestServerTime = data.epoch;
-                localTimeAtReceive = Date.now() / 1000.0;
-                
                 maxFreqBins = data.mags.length;
                 const newRow = { mags: new Float32Array(data.mags), epoch: data.epoch };
                 if (data.mags_z) {
@@ -263,6 +253,16 @@ async function loadLanguage() {
 
         // Ensure dynamic status element also gets updated if it is currently rendered
         updateStatus();
+
+        // Handle Spectrogram Disable feature flag
+        if (typeof config.enable_spectrogram !== 'undefined' && !config.enable_spectrogram) {
+            document.querySelectorAll('#btnModeSpectrogram, #timeWindow').forEach(el => {
+                el.disabled = true;
+                el.style.opacity = '0.3';
+                el.style.pointerEvents = 'none';
+                el.title = 'Spectrogram Disabled in Server Config';
+            });
+        }
     } catch (e) {
         console.error("Failed to load translation configuration:", e);
     }

@@ -1,3 +1,4 @@
 {
-  "language": "zh"
+  "language": "zh",
+  "enable_spectrogram": false
 }

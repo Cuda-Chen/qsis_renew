@@ -1,5 +1,7 @@
 # Note
 
+A list of the tasks I am going to do.
+
 ## in progress
 
 - [x] phase of spectrogram needs adjustment (every 1s calculation seems cannot synchronize with waveform).
@@ -27,7 +29,7 @@
   - [x] frequency incorrect (either delta T or time window)
   - [x] Add backfill
   - [x] log scale: y-axis
-  - [ ] disable on RPi 
+  - [x] disable on RPi 
 - miniSEED
   - [x] just store raw data, NO PRE-PROCESSING (demean + bandpass)
   - How about g * 1e6 (become integer)? 
@@ -77,7 +79,6 @@
 
 ## TO-DO
 
-- spectrogram 
 - [ ] program startup
   - [ ] send e-mail in startup 
     - [ ] sensor ID
