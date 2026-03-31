@@ -421,6 +421,70 @@
             pointer-events: none;
             z-index: 15;
         }
+
+        .dual-slider-container {
+            position: relative;
+            width: 80%;
+            height: 24px;
+            display: flex;
+            align-items: center;
+        }
+
+        .dual-slider-track {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 2px;
+            z-index: 1;
+        }
+
+        .dual-slider-fill {
+            position: absolute;
+            height: 4px;
+            background: var(--accent-green);
+            border-radius: 2px;
+            z-index: 2;
+        }
+
+        .dual-slider-input {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            pointer-events: none;
+            z-index: 3;
+            margin: 0;
+            outline: none;
+        }
+        
+        .dual-slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            border: 2px solid var(--accent-green);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        
+        .dual-slider-input::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            border: 2px solid var(--accent-green);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -585,14 +649,13 @@
                     
                     <div class="sidebar-control">
                         <label class="sidebar-label" data-i18n="freq_range_label">FREQ RANGE</label>
-                        <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                            <div style="display: flex; flex-direction: column; align-items: center;">
-                                <span class="sidebar-value">MIN: <span id="valFreqMin">0.5</span>Hz</span>
-                                <input type="range" id="freqMin" min="0.5" max="49.5" step="0.5" value="0.5" style="width: 80%;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; align-items: center;">
-                                <span class="sidebar-value">MAX: <span id="valFreqMax">50.0</span>Hz</span>
-                                <input type="range" id="freqMax" min="1.0" max="50.0" step="0.5" value="50.0" style="width: 80%;">
+                        <div style="display: flex; flex-direction: column; align-items: center; width: 100%; gap: 6px;">
+                            <span class="sidebar-value"><span id="valFreqMin">0.02</span>Hz - <span id="valFreqMax">50.00</span>Hz</span>
+                            <div class="dual-slider-container" id="freqSliderContainer">
+                                <div class="dual-slider-track"></div>
+                                <div class="dual-slider-fill" id="freqSliderFill"></div>
+                                <input type="range" class="dual-slider-input" id="freqMin" min="0.02" max="50.0" step="0.02" value="0.02">
+                                <input type="range" class="dual-slider-input" id="freqMax" min="0.02" max="50.0" step="0.02" value="50.0">
                             </div>
                         </div>
                     </div>

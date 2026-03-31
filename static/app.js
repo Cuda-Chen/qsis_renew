@@ -49,7 +49,8 @@ let maxFreqBins = 0;
 // --- Spectrogram Controls ---
 let specGain = 1.0;
 let useLogScale = false;
-let specMinFreq = 0.5;
+let specTimeWindow = 60; // 10s to 60s
+let specMinFreq = 0.02;
 let specMaxFreq = 50.0;
 
 // --- Spectrum State ---
@@ -868,36 +869,48 @@ document.querySelectorAll('.row-toggle').forEach(btn => {
 });
 
 // --- Spectrogram Frequency Range Controls ---
-const sliderFreqMin = document.getElementById('freqMin');
-const sliderFreqMax = document.getElementById('freqMax');
+const inpFreqMin = document.getElementById('freqMin');
+const inpFreqMax = document.getElementById('freqMax');
 const valFreqMin = document.getElementById('valFreqMin');
 const valFreqMax = document.getElementById('valFreqMax');
+const freqSliderFill = document.getElementById('freqSliderFill');
 
-sliderFreqMin.addEventListener('input', () => {
-    let min = parseFloat(sliderFreqMin.value);
-    let max = parseFloat(sliderFreqMax.value);
+function updateFreqFill() {
+    const minVal = parseFloat(inpFreqMin.value);
+    const maxVal = parseFloat(inpFreqMax.value);
+    const totalRange = 50.0 - 0.02;
+    const minPercent = ((minVal - 0.02) / totalRange) * 100;
+    const maxPercent = ((maxVal - 0.02) / totalRange) * 100;
+    freqSliderFill.style.left = minPercent + '%';
+    freqSliderFill.style.width = (maxPercent - minPercent) + '%';
+}
 
-    if (min >= max) {
-        min = max - 0.5;
-        sliderFreqMin.value = min;
+inpFreqMin.addEventListener('input', (e) => {
+    let val = parseFloat(e.target.value);
+    if (val >= specMaxFreq) {
+        val = specMaxFreq - 0.5;
+        if (val < 0.02) val = 0.02;
+        e.target.value = val;
     }
-
-    specMinFreq = min;
-    valFreqMin.textContent = min.toFixed(1);
+    specMinFreq = val;
+    valFreqMin.textContent = specMinFreq.toFixed(2);
+    updateFreqFill();
 });
 
-sliderFreqMax.addEventListener('input', () => {
-    let min = parseFloat(sliderFreqMin.value);
-    let max = parseFloat(sliderFreqMax.value);
-
-    if (max <= min) {
-        max = min + 0.5;
-        sliderFreqMax.value = max;
+inpFreqMax.addEventListener('input', (e) => {
+    let val = parseFloat(e.target.value);
+    if (val <= specMinFreq) {
+        val = specMinFreq + 0.5;
+        if (val > 50.0) val = 50.0;
+        e.target.value = val;
     }
-
-    specMaxFreq = max;
-    valFreqMax.textContent = max.toFixed(1);
+    specMaxFreq = val;
+    valFreqMax.textContent = specMaxFreq.toFixed(2);
+    updateFreqFill();
 });
+
+// Initialize fill
+updateFreqFill();
 
 // --- Waveform Hover Tooltip ---
 const tooltip = document.getElementById('hoverTooltip');
