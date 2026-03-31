@@ -636,7 +636,7 @@ function drawSpectrumPlot() {
     ctxSpec.rotate(-Math.PI / 2);
     ctxSpec.textAlign = 'center';
     ctxSpec.textBaseline = 'middle';
-    ctxSpec.fillText(`(gal/s^2)^2/Hz`, 0, 0);
+    ctxSpec.fillText(`(cm/s^2)^2/Hz`, 0, 0);
     ctxSpec.restore();
 
     // Draw Y-axis line
