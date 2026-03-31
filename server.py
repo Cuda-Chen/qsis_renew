@@ -141,12 +141,13 @@ def hardware_loop():
         processed = dsp.process(acc[0], acc[1], acc[2])
         with data_lock:
             waveform_ring.append(processed)
+            sample_count += 1
+            
         with archive_lock:
             # Store raw (unprocessed) data in the archive
             archive_queue.append(acc)
             
         # Diagnostics: measure actual samplerate
-        sample_count += 1
         now = time.monotonic()
         elapsed = now - start_time
         if elapsed > 1.0:
@@ -479,7 +480,7 @@ async def ws_waveform(websocket: WebSocket):
         # However, to avoid dropping samples across the async websocket, we just send
         # whatever is new in the buffer at the delay point.
         delay_samples = int(FS * 2.0)
-        last_head = -1
+        last_count = -1
         
         # --- Send Initial Backfill Payload ---
         # Copy data and release the lock BEFORE serialization and sending.
@@ -488,7 +489,7 @@ async def ws_waveform(websocket: WebSocket):
         # sample loss and cascading freezes for all connected clients.
         with data_lock:
             all_data = waveform_ring.get_all()   # fast numpy copy
-            captured_head = waveform_ring.head
+            captured_count = sample_count
         # Lock released — safe to do slow work below
         if len(all_data) > delay_samples:
             initial_chunk = all_data[:-delay_samples]
@@ -498,36 +499,39 @@ async def ws_waveform(websocket: WebSocket):
                 "t": initial_epoch,
                 "fs": actual_fs
             }))
-            last_head = captured_head
+            last_count = captured_count
         
         while True:
             await asyncio.sleep(UI_STREAM_MS / 1000.0)
             
             with data_lock:
                 current_head = waveform_ring.head
+                current_count = sample_count
                 
-            if last_head == -1:
+            if last_count == -1:
                 # Initialize
-                last_head = current_head
+                last_count = current_count
                 continue
                 
-            if current_head != last_head:
+            if current_count != last_count:
                 # How many samples have arrived since last tick?
-                frames = current_head - last_head
-                if frames < 0:
-                    frames += WAVEFORM_BUFFER_SIZE
+                frames = current_count - last_count
+                if frames > WAVEFORM_BUFFER_SIZE:
+                    frames = WAVEFORM_BUFFER_SIZE
                     
                 # We want to extract `frames` amount of samples, but originating from `delay_samples` ago.
-                delayed_start = (last_head - delay_samples) % WAVEFORM_BUFFER_SIZE
-                delayed_end = (current_head - delay_samples) % WAVEFORM_BUFFER_SIZE
+                end_idx = (current_head - delay_samples) % WAVEFORM_BUFFER_SIZE
+                start_idx = (end_idx - frames) % WAVEFORM_BUFFER_SIZE
                 
                 with data_lock:
-                    if delayed_start < delayed_end:
-                        chunk = waveform_ring.buffer[delayed_start:delayed_end]
+                    if frames == WAVEFORM_BUFFER_SIZE:
+                        chunk = np.concatenate((waveform_ring.buffer[end_idx:], waveform_ring.buffer[:end_idx]))
+                    elif start_idx < end_idx:
+                        chunk = waveform_ring.buffer[start_idx:end_idx]
                     else:
-                        chunk = np.concatenate((waveform_ring.buffer[delayed_start:], waveform_ring.buffer[:delayed_end]))
+                        chunk = np.concatenate((waveform_ring.buffer[start_idx:], waveform_ring.buffer[:end_idx]))
                         
-                last_head = current_head
+                last_count = current_count
                 
                 if len(chunk) > 0:
                     # Epoch of the last sample in this chunk
@@ -557,6 +561,7 @@ async def ws_spectrogram(websocket: WebSocket):
         for i, row in enumerate(history):
             if i == len(history) - 1:
                 optimized_history.append(row)
+                last_epoch = row["epoch"] # record the newest timestamp sent
             else:
                 # Include per-component mags for selective spectrogram rendering
                 entry = {
@@ -569,14 +574,34 @@ async def ws_spectrogram(websocket: WebSocket):
                     entry["mags_e"] = row["mags_e"]
                 optimized_history.append(entry)
         await websocket.send_text(json.dumps(optimized_history))
+    else:
+        last_epoch = 0.0
         
-    last_sent = None
     try:
         while True:
             await asyncio.sleep(0.5)
-            if latest_spectrogram and latest_spectrogram != last_sent:
-                await websocket.send_text(json.dumps(latest_spectrogram))
-                last_sent = latest_spectrogram
+            
+            with data_lock:
+                history = list(spectrogram_ring)
+                
+            pending = [row for row in history if row["epoch"] > last_epoch]
+            
+            if pending:
+                for row in pending:
+                    if row != pending[-1]:
+                        entry = {
+                            "mags": row["mags"],
+                            "epoch": row["epoch"]
+                        }
+                        if "mags_z" in row:
+                            entry["mags_z"] = row["mags_z"]
+                            entry["mags_n"] = row["mags_n"]
+                            entry["mags_e"] = row["mags_e"]
+                        await websocket.send_text(json.dumps(entry))
+                    else:
+                        await websocket.send_text(json.dumps(row))
+                        
+                last_epoch = pending[-1]["epoch"]
     except WebSocketDisconnect:
         pass
     except Exception as e:
