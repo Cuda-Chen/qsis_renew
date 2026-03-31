@@ -1,0 +1,84 @@
+# Note
+
+## in progress
+
+- [x] phase of spectrogram needs adjustment (every 1s calculation seems cannot synchronize with waveform).
+  - Check the waveform update interval.
+  - 3/20 seems not really synchronized
+    - Why the timestamp have about 1 second delay compared to waveform? 
+- Ensure to do NTP synchronization.
+  - Taiwan NTP (gov) server
+    - Five nodes?
+- Change the block size to 4096 and record this weekend.
+  - Alter to 512 in Moneay.
+  - **should be unprocessed**
+- [ ] spectrogram
+  - y-axis: tick
+  - middle(?): grid
+  - [x] 0~10Hz: 1Hz interval
+  - [x] 10Hx~20Hz: 2Hz interval
+  - [x] 20Hz~: 5Hz interval
+  - [x] Adjustable time window
+  - [ ] 10-600s
+  - [x] use 3-channel
+    - [x] toggle
+      - shared with spectrum toggle
+    - [x] default: Z-axis
+  - [x] frequency incorrect (either delta T or time window)
+  - [x] Add backfill
+  - [x] log scale: y-axis
+  - [ ] disable on RPi 
+- miniSEED
+  - [x] just store raw data, NO PRE-PROCESSING (demean + bandpass)
+  - How about g * 1e6 (become integer)? 
+    - to shrink size
+    - STEIM-2
+  - [x] solve overlapping
+    - It appears regularily.
+      - The reason is that the sampling frequency does not obey the setting (set 100 Hz but still output in 110~125 Hz)
+    - computer suspend?
+- [x] frequency spectrum of each waveform
+  - re-use the panel
+  - an extra buttom to switch spectrogram/frequency spectrum
+  - 3-channel of 頻譜 (render in the same panel with different color)
+  - select time range of spectrogram
+  - display time window (5 second min)
+  - unit: g * 980 -> gal
+  - amplitude v.s. frequency
+  - spectrum (remember demean then filter)
+  - power spectrum density
+  - 2 second interval
+    - whole 1 min time window
+    - [s-1, s+1]
+- [x] waveform
+  - [x] bar (linear -> log scale OR square-root)
+  - [x] (“backfill” in SeedLink) in backend to fill the frontend component with already recorded data with 5 min buffer
+  - [x] fix log scale value incorrect
+- [x] spectrum
+  - [x] solve E component always the largest
+  - [x] (gal/s^2)^2/Hz
+  - [x] fix x-axis unit font be covered and to small issue
+  - [x] toggle
+  - [x] default: Z-axis
+- [x] front v.s. background
+  - light mode?
+- [x] UI
+  - [x] default of spectrogram -> spectrum
+  - [x] waveform tool -> 波形工具
+  - [x] waveform: 量程 -> 振幅比例
+    - [x] LIN -> 線性
+    - [x] LOG -> 對數
+  - [x] spectrogram tools -> 頻譜工具
+      - [x] 量程 -> 強度比例
+        - [x] LIN -> 線性
+        - [x] LOG -> 對數
+        - [x] unit: (cm/s^2)^2/Hz
+        - [x] two bar for low/high -> one bar with two ends (0.02~50Hz)
+
+## TO-DO
+
+- spectrogram 
+- [ ] program startup
+  - [ ] send e-mail in startup 
+    - [ ] sensor ID
+    - [ ] IP
