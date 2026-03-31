@@ -233,9 +233,17 @@ let i18nDict = {};
 
 async function loadLanguage() {
     try {
-        // Fetch language setting from configuration file
-        const confRes = await fetch('/static/config.json');
-        const config = await confRes.json();
+        // Safe-fetch configuration with defaults for fresh git clones
+        let config = { language: 'en', enable_spectrogram: true };
+        try {
+            const confRes = await fetch('/static/config.json');
+            if (confRes.ok) {
+                config = await confRes.json();
+            }
+        } catch (e) {
+            console.warn("config.json missing or malformed; using defaults.", e);
+        }
+        
         const lang = config.language || 'en';
 
         // Append a cache-busting timestamp to ensure the latest keys are pulled
