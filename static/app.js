@@ -53,7 +53,7 @@ let specMinFreq = 0.5;
 let specMaxFreq = 50.0;
 
 // --- Spectrum State ---
-let isSpectrumMode = false;
+let isSpectrumMode = true;
 let spectrumWindowSize = '2s'; // '2s' or '60s'
 let latestSpectrumData = null;
 let useWaveformLogScale = false;
