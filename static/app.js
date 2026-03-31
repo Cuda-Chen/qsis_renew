@@ -16,6 +16,16 @@ let SECONDS_TO_SHOW = 60;
 const WEBSOCKET_URL = `ws://${window.location.host}`;
 const Y_AXIS_WIDTH = 60;
 
+// --- Server-Relative Clock Physics ---
+let latestServerTime = 0;
+let localTimeAtReceive = 0;
+
+function getServerTime() {
+    if (latestServerTime === 0) return Date.now() / 1000.0;
+    const elapsedLocal = (Date.now() / 1000.0) - localTimeAtReceive;
+    return latestServerTime + elapsedLocal;
+}
+
 // --- Waveform State ---
 // Buffer sized for up to MAX_FS Hz to accommodate actual Phidget delivery rates.
 // Timestamp-based rendering positions each sample correctly regardless of buffer size.
@@ -29,7 +39,7 @@ let waveT = new Float64Array(BUFFER_SIZE); // epoch (Unix seconds) per sample
 // Initialize waveT with synthetic timestamps spanning the full view window.
 // Without this, samples default to epoch 0 and clamp to x=0 until the buffer fills.
 {
-    const initNow = Date.now() / 1000.0;
+    const initNow = getServerTime();
     const INIT_DELAY = 2.0;
     for (let i = 0; i < waveT.length; i++) {
         // Spread init timestamps evenly across 5 minutes, regardless of actual FS
@@ -151,7 +161,12 @@ function connectWaveform() {
             const startIdx = waveX.length - len;
             // Use real timestamp if server provides it; fall back to estimated 'now - 2s delay'
             const WAVEFORM_DELAY = 2.0;
-            const chunkEndEpoch = (data.t != null) ? data.t : (Date.now() / 1000.0 - WAVEFORM_DELAY);
+            const latestSampleEpoch = data.t;
+            if (latestSampleEpoch != null) {
+                latestServerTime = latestSampleEpoch;
+                localTimeAtReceive = Date.now() / 1000.0;
+            }
+            const chunkEndEpoch = (latestSampleEpoch != null) ? latestSampleEpoch : (getServerTime() - WAVEFORM_DELAY);
             const dt = (data.fs && data.fs > 0) ? (1.0 / data.fs) : (1.0 / FS);
             for (let i = 0; i < len; i++) {
                 waveX[startIdx + i] = yData[i][0];
@@ -174,6 +189,13 @@ function connectSpectro() {
         
         // If it's an array, it's the initial backfill history payload
         if (Array.isArray(msg)) {
+            if (msg.length > 0) {
+                const latest = msg[msg.length - 1];
+                if (latest.epoch) {
+                    latestServerTime = latest.epoch;
+                    localTimeAtReceive = Date.now() / 1000.0;
+                }
+            }
             specHistory = [];
             // Server sends oldest first, newest last. specHistory needs newest at index 0.
             for (let i = msg.length - 1; i >= 0; i--) {
@@ -196,6 +218,9 @@ function connectSpectro() {
             // Normal live update object
             const data = msg;
             if (data.mags && data.epoch != null) {
+                latestServerTime = data.epoch;
+                localTimeAtReceive = Date.now() / 1000.0;
+                
                 maxFreqBins = data.mags.length;
                 const newRow = { mags: new Float32Array(data.mags), epoch: data.epoch };
                 if (data.mags_z) {
@@ -280,7 +305,7 @@ function drawWaveform() {
     // VIEW_DELAY shifts the window so the waveform fills the full canvas.
     // The right edge represents (now - 2s), left edge represents (now - 62s).
     const pxPerSecond = width / SECONDS_TO_SHOW;
-    const nowSec = Date.now() / 1000.0;
+    const nowSec = getServerTime();
     const VIEW_DELAY = 2.0; // must match server.py delay_samples / FS
 
     function drawAxis(ctx, buffer, color, scale) {
@@ -413,7 +438,7 @@ function drawSpectrogram() {
     }
 
     const limit = Math.min(SPEC_ROWS, specHistory.length);
-    const nowSec = Date.now() / 1000.0;
+    const nowSec = getServerTime();
 
     for (let t = 0; t < limit; t++) {
         const row = specHistory[t];
@@ -968,7 +993,7 @@ function positionTooltip(e) {
 // --- Dynamic Datetime Clock ---
 function updateAxisClocks() {
     const VIEW_DELAY = 2.0; // matching waveform delay
-    const now = new Date(Date.now() - VIEW_DELAY * 1000);
+    const now = new Date((getServerTime() * 1000) - VIEW_DELAY * 1000);
     const past = new Date(now.getTime() - SECONDS_TO_SHOW * 1000);
 
     const pad = (n) => n.toString().padStart(2, '0');
