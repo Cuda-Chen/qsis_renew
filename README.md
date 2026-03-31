@@ -80,7 +80,21 @@ $ LD_LIBRARY_PATH=/usr/local/lib uv run uvicorn server:app --host 0.0.0.0 --port
 Once the server is running, simply open your favorite modern web browser and navigate to:
 `http://localhost:8000`
 
-## 5. Auto-Start on Boot (Cron)
+## 5. Configuration Settings
+
+The dashboard reads a central configuration file located at `static/config.json` when the UI loads. 
+
+```json
+{
+  "language": "zh",
+  "enable_spectrogram": false
+}
+```
+
+- **`language`**: Defines the UI localization (e.g., `"en"` for English, `"zh"` for Traditional Chinese).
+- **`enable_spectrogram`**: Set to `false` to explicitly lock and grey-out the 2D Spectrogram UI controls (Mode button and Time Window slider) to prevent users from switching away from the 1D Spectrum display.
+
+## 6. Auto-Start on Boot (Cron)
 
 To automatically launch the QSIS server when the system boots, add a `@reboot` entry to your crontab:
 
