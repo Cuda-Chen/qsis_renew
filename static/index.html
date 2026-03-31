@@ -55,34 +55,54 @@
             color: var(--text-main);
             font-family: 'Outfit', system-ui, -apple-system, sans-serif;
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
             height: 100vh;
             width: 100vw;
             box-sizing: border-box;
             overflow: hidden;
         }
 
-        .sidebar {
-            width: 100px;
+        .global-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--panel-header-bg);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .tools-sidebar {
+            width: 140px;
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 24px 12px;
-            gap: 20px;
-        }
-
-        .sidebar-title {
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: 0.5em;
-            color: var(--text-secondary);
-            margin-bottom: auto;
+            padding: 16px 10px;
+            gap: 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+            z-index: 10;
         }
         
+        .tools-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .tools-sidebar::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 4px;
+        }
+
         .download-btn {
             background-color: var(--accent-green);
             color: var(--bg-dark);
@@ -107,19 +127,10 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            padding: 10px;
-            height: 100vh;
+            gap: 12px;
+            padding: 12px;
             box-sizing: border-box;
             overflow: hidden;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 4px;
-            border-bottom: 1px solid var(--border-color);
         }
 
         h1 {
@@ -167,9 +178,18 @@
             border-radius: 12px;
             border: 1px solid var(--border-color);
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             box-shadow: var(--glow);
             overflow: hidden;
+        }
+
+        .panel-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-width: 0;
+            background-color: var(--canvas-bg);
         }
 
         .panel-header {
@@ -404,134 +424,74 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <!-- Theme Toggle -->
-        <div class="sidebar-control" style="margin-bottom: 20px;">
-            <label class="sidebar-label" data-i18n="theme_label">THEME</label>
-            <div class="toggle-group">
-                <button id="btnThemeDark" class="toggle-btn active" title="Dark Mode">
-                    <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,18C11.11,18 10.26,17.8 9.5,17.45C11.56,16.5 13,14.42 13,12C13,9.58 11.56,7.5 9.5,6.55C10.26,6.2 11.11,6 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z" /></svg>
-                </button>
-                <button id="btnThemeLight" class="toggle-btn" title="Light Mode">
-                    <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,4.39L12,6.78L9.61,4.39L12,2M5.61,4.39L8,6.78L5.61,9.17L3.22,6.78L5.61,4.39M4.39,18.39L6.78,16L9.17,18.39L6.78,20.78L4.39,18.39M18.39,18.39L16,16L13.61,18.39L16,20.78L18.39,18.39M22,12L19.61,9.61L17.22,12L19.61,14.39L22,12M12,22L9.61,19.61L12,17.22L14.39,19.61L12,22M2,12L4.39,14.39L6.78,12L4.39,9.61L2,12M18.39,5.61L16,8L18.39,10.39L20.78,8L18.39,5.61Z" /></svg>
-                </button>
-            </div>
-        </div>
-
-        <div class="sidebar-title" data-i18n="sidebar_title">功能</div>
-        
-        <!-- WAVEFORM TOOLS SECTION -->
-        <div style="width: 100%; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px;">
-            <div style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Waveform Tools</div>
-            
-            <div class="sidebar-control" style="margin-bottom: 15px;">
-                <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
-                <div class="toggle-group">
-                    <button id="btnWaveLin" class="toggle-btn active">LIN</button>
-                    <button id="btnWaveLog" class="toggle-btn">LOG</button>
-                </div>
-            </div>
-
-            <div class="sidebar-control" style="margin-bottom: 15px;">
-                <label class="sidebar-label" data-i18n="wave_scale_label">WAVE SCALE</label>
-                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <span class="sidebar-value" style="color: #3b82f6;">Z: <span id="valScaleZ">2.0</span>g</span>
-                        <input type="range" id="scaleZ" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #3b82f6; width: 80%;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <span class="sidebar-value" style="color: #10b981;">N: <span id="valScaleN">2.0</span>g</span>
-                        <input type="range" id="scaleN" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #10b981; width: 80%;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <span class="sidebar-value" style="color: #ef4444;">E: <span id="valScaleE">2.0</span>g</span>
-                        <input type="range" id="scaleE" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #ef4444; width: 80%;">
-                    </div>
-                </div>
-            </div>
-
-            <div class="sidebar-control">
-                <label class="sidebar-label" data-i18n="history_label" style="color: var(--accent-green);">歷史下載 (MSEED)</label>
-                <input type="date" id="historyDate" style="width: 100%; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; font-size: 0.75rem; margin-bottom: 8px; font-family: inherit; padding: 0 4px;">
-                <button id="downloadAllBtn" class="download-btn" style="padding: 6px 0; font-size: 0.75rem; margin-bottom: 8px;" data-i18n="download_all_btn">下載全部 (ZIP)</button>
-                <div style="display: flex; gap: 4px; width: 100%;">
-                    <button id="downloadZBtn" class="toggle-btn" style="flex: 1; border-color: #3b82f6; color: #3b82f6;" title="Download Z Channel">Z</button>
-                    <button id="downloadNBtn" class="toggle-btn" style="flex: 1; border-color: #10b981; color: #10b981;" title="Download N Channel">N</button>
-                    <button id="downloadEBtn" class="toggle-btn" style="flex: 1; border-color: #ef4444; color: #ef4444;" title="Download E Channel">E</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- SPECTROGRAM TOOLS SECTION -->
-        <div style="width: 100%;">
-            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Spectrogram Tools</div>
-            
-            <div class="sidebar-control" style="margin-bottom: 15px;">
-                <label class="sidebar-label" data-i18n="time_window_label">TIME WINDOW</label>
-                <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
-                    <span class="sidebar-value"><span id="valTimeWindow">60</span>s</span>
-                    <input type="range" id="timeWindow" min="10" max="60" step="1" value="60" style="width: 80%; accent-color: var(--accent-green);">
-                </div>
-            </div>
-
-            <div class="sidebar-control" style="margin-bottom: 15px;">
-                <label class="sidebar-label" data-i18n="mode_label">DISPLAY MODE</label>
-                <div class="toggle-group">
-                    <button id="btnModeSpectrogram" class="toggle-btn active">SPECTROGRAM</button>
-                    <button id="btnModeSpectrum" class="toggle-btn">SPECTRUM</button>
-                </div>
-            </div>
-            
-            <div id="spectrumWindowControl" class="sidebar-control" style="margin-bottom: 15px; display: none;">
-                <label class="sidebar-label" data-i18n="spectrum_window_label">ANALYSIS WINDOW</label>
-                <div class="toggle-group">
-                    <button id="btnWin2s" class="toggle-btn active">2s</button>
-                    <button id="btnWin60s" class="toggle-btn">60s</button>
-                </div>
-            </div>
-
-            <div class="sidebar-control" style="margin-bottom: 15px;">
-                <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
-                <div class="toggle-group">
-                    <button id="btnLin" class="toggle-btn active">LIN</button>
-                    <button id="btnLog" class="toggle-btn">LOG</button>
-                </div>
-            </div>
-            
-            <div class="sidebar-control" style="margin-bottom: 15px;">
-                <label class="sidebar-label" data-i18n="gain_label">GAIN</label>
-                <input type="range" id="gainSlider" min="0.1" max="10" step="0.1" value="1.0">
-                <span id="gainValue" class="sidebar-value">1.0x</span>
-            </div>
-            
-            <div class="sidebar-control">
-                <label class="sidebar-label" data-i18n="freq_range_label">FREQ RANGE</label>
-                <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <span class="sidebar-value">MIN: <span id="valFreqMin">0.5</span>Hz</span>
-                        <input type="range" id="freqMin" min="0.5" max="49.5" step="0.5" value="0.5" style="width: 80%;">
-                    </div>
-                    <div style="display: flex; flex-direction: column; align-items: center;">
-                        <span class="sidebar-value">MAX: <span id="valFreqMax">50.0</span>Hz</span>
-                        <input type="range" id="freqMax" min="1.0" max="50.0" step="0.5" value="50.0" style="width: 80%;">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="main-content">
-        <div class="header">
+    <div class="global-header">
+        <div style="display: flex; align-items: center; gap: 20px;">
             <h1 data-i18n="main_header">QSIS資料處理系統</h1>
             <div class="status-badge" id="conn-status">
                 <div class="status-dot"></div>
                 <span data-i18n="status_connecting">Connecting...</span>
             </div>
         </div>
+        <div class="header-actions">
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em;" data-i18n="theme_label">THEME</span>
+            <div class="toggle-group" style="width: auto;">
+                <button id="btnThemeDark" class="toggle-btn active" title="Dark Mode" style="padding: 6px 10px;">
+                    <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,18C11.11,18 10.26,17.8 9.5,17.45C11.56,16.5 13,14.42 13,12C13,9.58 11.56,7.5 9.5,6.55C10.26,6.2 11.11,6 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z" /></svg>
+                </button>
+                <button id="btnThemeLight" class="toggle-btn" title="Light Mode" style="padding: 6px 10px;">
+                    <svg style="width:14px;height:14px" viewBox="0 0 24 24"><path fill="currentColor" d="M12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,2L14.39,4.39L12,6.78L9.61,4.39L12,2M5.61,4.39L8,6.78L5.61,9.17L3.22,6.78L5.61,4.39M4.39,18.39L6.78,16L9.17,18.39L6.78,20.78L4.39,18.39M18.39,18.39L16,16L13.61,18.39L16,20.78L18.39,18.39M22,12L19.61,9.61L17.22,12L19.61,14.39L22,12M12,22L9.61,19.61L12,17.22L14.39,19.61L12,22M2,12L4.39,14.39L6.78,12L4.39,9.61L2,12M18.39,5.61L16,8L18.39,10.39L20.78,8L18.39,5.61Z" /></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <!-- Waveform Panel -->
+        <div class="panel" style="flex: 2;">
+            <div class="tools-sidebar">
+                <div style="width: 100%;">
+                    <div style="font-size: 0.70rem; color: var(--accent-green); font-weight: 700; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Waveform Tools</div>
+                    
+                    <div class="sidebar-control" style="margin-bottom: 15px;">
+                        <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
+                        <div class="toggle-group">
+                            <button id="btnWaveLin" class="toggle-btn active">LIN</button>
+                            <button id="btnWaveLog" class="toggle-btn">LOG</button>
+                        </div>
+                    </div>
 
-        <!-- Waveform Panel (Z, N, E combined) -->
-        <div class="panel" style="flex: 2; display: flex; flex-direction: column;">
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;">
+                    <div class="sidebar-control" style="margin-bottom: 15px;">
+                        <label class="sidebar-label" data-i18n="wave_scale_label">WAVE SCALE</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <span class="sidebar-value" style="color: #3b82f6;">Z: <span id="valScaleZ">2.0</span>g</span>
+                                <input type="range" id="scaleZ" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #3b82f6; width: 80%;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <span class="sidebar-value" style="color: #10b981;">N: <span id="valScaleN">2.0</span>g</span>
+                                <input type="range" id="scaleN" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #10b981; width: 80%;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <span class="sidebar-value" style="color: #ef4444;">E: <span id="valScaleE">2.0</span>g</span>
+                                <input type="range" id="scaleE" min="0.1" max="2.0" step="0.1" value="2.0" style="accent-color: #ef4444; width: 80%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-control">
+                        <label class="sidebar-label" data-i18n="history_label" style="color: var(--accent-green);">歷史下載 (MSEED)</label>
+                        <input type="date" id="historyDate" style="width: 100%; height: 24px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; font-size: 0.75rem; margin-bottom: 8px; font-family: inherit; padding: 0 4px;">
+                        <button id="downloadAllBtn" class="download-btn" style="padding: 6px 0; font-size: 0.75rem; margin-bottom: 8px;" data-i18n="download_all_btn">下載全部 (ZIP)</button>
+                        <div style="display: flex; gap: 4px; width: 100%;">
+                            <button id="downloadZBtn" class="toggle-btn" style="flex: 1; border-color: #3b82f6; color: #3b82f6;" title="Download Z Channel">Z</button>
+                            <button id="downloadNBtn" class="toggle-btn" style="flex: 1; border-color: #10b981; color: #10b981;" title="Download N Channel">N</button>
+                            <button id="downloadEBtn" class="toggle-btn" style="flex: 1; border-color: #ef4444; color: #ef4444;" title="Download E Channel">E</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-content" style="gap: 2px;">
                 <!-- Z Component -->
                 <div class="waveform-container" style="flex: 1; border-bottom: 1px solid var(--border-color);">
                     <canvas id="canvasZ"></canvas>
@@ -581,23 +541,82 @@
 
         <!-- Spectrogram Panel -->
         <div class="panel" style="flex: 1.5;">
-            <div class="panel-header">
-                <span data-i18n="panel_spec">時頻圖/頻譜 (1s Overlap)</span>
+            <div class="tools-sidebar">
+                <div style="width: 100%;">
+                    <div style="font-size: 0.70rem; color: #94a3b8; font-weight: 700; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.1em; text-align: center;">Spectrogram Tools</div>
+                    
+                    <div class="sidebar-control" style="margin-bottom: 15px;">
+                        <label class="sidebar-label" data-i18n="time_window_label">TIME WINDOW</label>
+                        <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                            <span class="sidebar-value"><span id="valTimeWindow">60</span>s</span>
+                            <input type="range" id="timeWindow" min="10" max="60" step="1" value="60" style="width: 80%; accent-color: var(--accent-green);">
+                        </div>
+                    </div>
+
+                    <div class="sidebar-control" style="margin-bottom: 15px;">
+                        <label class="sidebar-label" data-i18n="mode_label">DISPLAY MODE</label>
+                        <div class="toggle-group">
+                            <button id="btnModeSpectrogram" class="toggle-btn active">SPECTROGRAM</button>
+                            <button id="btnModeSpectrum" class="toggle-btn">SPECTRUM</button>
+                        </div>
+                    </div>
+                    
+                    <div id="spectrumWindowControl" class="sidebar-control" style="margin-bottom: 15px; display: none;">
+                        <label class="sidebar-label" data-i18n="spectrum_window_label">ANALYSIS WINDOW</label>
+                        <div class="toggle-group">
+                            <button id="btnWin2s" class="toggle-btn active">2s</button>
+                            <button id="btnWin60s" class="toggle-btn">60s</button>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-control" style="margin-bottom: 15px;">
+                        <label class="sidebar-label" data-i18n="scale_label">SCALE</label>
+                        <div class="toggle-group">
+                            <button id="btnLin" class="toggle-btn active">LIN</button>
+                            <button id="btnLog" class="toggle-btn">LOG</button>
+                        </div>
+                    </div>
+                    
+                    <div class="sidebar-control" style="margin-bottom: 15px;">
+                        <label class="sidebar-label" data-i18n="gain_label">GAIN</label>
+                        <input type="range" id="gainSlider" min="0.1" max="10" step="0.1" value="1.0">
+                        <span id="gainValue" class="sidebar-value">1.0x</span>
+                    </div>
+                    
+                    <div class="sidebar-control">
+                        <label class="sidebar-label" data-i18n="freq_range_label">FREQ RANGE</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <span class="sidebar-value">MIN: <span id="valFreqMin">0.5</span>Hz</span>
+                                <input type="range" id="freqMin" min="0.5" max="49.5" step="0.5" value="0.5" style="width: 80%;">
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: center;">
+                                <span class="sidebar-value">MAX: <span id="valFreqMax">50.0</span>Hz</span>
+                                <input type="range" id="freqMax" min="1.0" max="50.0" step="0.5" value="50.0" style="width: 80%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="spectro-container">
-                <canvas id="spectroCanvas"></canvas>
-                <!-- Color Scale Legend -->
-                <div class="color-scale"></div>
-                <div class="color-scale-label" style="top: 4px;">MAX</div>
-                <div class="color-scale-label" style="bottom: 20px;">MIN</div>
-                <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW (-2s)</div>
-                <div id="lblTimeLeft" class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
-                <!-- Vertical Axis: Frequency -->
+            <div class="panel-content">
+                <div class="panel-header">
+                    <span data-i18n="panel_spec">時頻圖/頻譜 (1s Overlap)</span>
+                </div>
+                <div class="spectro-container">
+                    <canvas id="spectroCanvas"></canvas>
+                    <!-- Color Scale Legend -->
+                    <div class="color-scale"></div>
+                    <div class="color-scale-label" style="top: 4px;">MAX</div>
+                    <div class="color-scale-label" style="bottom: 20px;">MIN</div>
+                    <div class="axis-label time-right" style="bottom: 5px; right: 10px;">NOW (-2s)</div>
+                    <div id="lblTimeLeft" class="axis-label time-left" style="bottom: 5px; left: 10px;">T-60s</div>
+                    <!-- Vertical Axis: Frequency -->
+                </div>
             </div>
         </div>
     </div>
 
     <div id="hoverTooltip" class="hover-tooltip"></div>
-    <script src="/static/app.js?v=10"></script>
+    <script src="/static/app.js?v=20"></script>
 </body>
 </html>
